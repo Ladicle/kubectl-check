@@ -1,0 +1,43 @@
+before:
+  hooks:
+  - go mod download
+builds:
+- env:
+  - CGO_ENABLED=0
+  ldflags:
+  - -w
+  - -X github.com/Ladicle/kubectl-diagnose/cmd.version={{.Version}}
+  - -X github.com/Ladicle/kubectl-diagnose/cmd.commit={{.ShortCommit}}
+  goos:
+  - linux
+  - windows
+  - darwin
+  goarch:
+  - amd64
+  - arm64
+archives:
+- builds:
+  - kubectl-diagnose
+  name_template: "{{ .ProjectName }}_{{ .Os }}-{{ .Arch }}"
+  format: tar.gz
+  files:
+  - LICENSE
+  wrap_in_directory: true
+checksum:
+  name_template: 'checksums.txt'
+changelog:
+  sort: asc
+brews:
+- name: kubectl-diagnose
+  tap:
+    owner: Ladicle
+    name: homebrew-kubectl-diagnose
+    token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+  description: "Diagnose Kubernetes resource"
+  homepage: "https://github.com/Ladicle/kubectl-diagnose"
+dockers:
+- image_templates:
+  - "ghcr.io/Ladicle/kubectl-diagnose:{{ .Tag }}"
+  - "ghcr.io/Ladicle/kubectl-diagnose:v{{ .Major }}"
+  - "ghcr.io/Ladicle/kubectl-diagnose:v{{ .Major }}.{{ .Minor }}"
+  - "ghcr.io/Ladicle/kubectl-diagnose:latest"
