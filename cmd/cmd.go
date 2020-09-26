@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"k8s.io/kubectl/pkg/util/term"
 )
 
 var (
@@ -36,7 +38,11 @@ func NewDiagnoseCmd() *cobra.Command {
 	f := cmdutil.NewFactory(matchVersionFlags)
 	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 
-	cmds.AddCommand(NewDeploymentCmd(f, ioStreams))
+	printer := &pritty.Printer{IOStreams: ioStreams}
+	cmds.PersistentFlags().BoolVarP(&printer.Color, "color", "R", false, "Enable color output even if stdout is not a terminal")
+	printer.TTY = term.TTY{Out: ioStreams.Out}.IsTerminalOut()
+
+	cmds.AddCommand(NewDeploymentCmd(f, printer))
 
 	return cmds
 }
