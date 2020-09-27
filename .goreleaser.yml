@@ -35,7 +35,3 @@ brews:
     token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
   description: "Diagnose Kubernetes resource"
   homepage: "https://github.com/Ladicle/kubectl-diagnose"
-dockers:
-- image_templates:
-  - "docker.pkg.github.com/ladicle/kubectl-diagnose/cli:{{ .Tag }}"
-  - "docker.pkg.github.com/ladicle/kubectl-diagnose/cli:latest"
