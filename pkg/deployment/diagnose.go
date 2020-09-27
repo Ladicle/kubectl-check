@@ -1,6 +1,7 @@
 package deployment
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -69,6 +70,20 @@ func isStatusTrue(status corev1.ConditionStatus) bool {
 	return status == corev1.ConditionTrue
 }
 
+// isContainerStarted is a function to checks if the current or the last container holds the ContainerID.
+// In other words, it is determined whether the container has been started even once.
+func isContainerStarted(cs corev1.ContainerStatus) bool {
+	switch {
+	case cs.Ready && cs.ContainerID != "":
+		return true
+	case cs.State.Terminated != nil && cs.State.Terminated.ContainerID != "":
+		return true
+	case cs.LastTerminationState.Terminated != nil && cs.LastTerminationState.Terminated.ContainerID != "":
+		return true
+	}
+	return false
+}
+
 func filterNotReadyContainers(css []corev1.ContainerStatus) []corev1.ContainerStatus {
 	var notReadyContainers []corev1.ContainerStatus
 	for _, cs := range css {
@@ -131,7 +146,10 @@ func formatEvents(events []corev1.Event) string {
 
 func FormatAge(ev corev1.Event) string {
 	if ev.Count > 1 {
-		return fmt.Sprintf("%s (x%d over %s)", translateTimestampSince(ev.LastTimestamp), ev.Count, translateTimestampSince(ev.FirstTimestamp))
+		return fmt.Sprintf("%s (x%d over %s)",
+			translateTimestampSince(ev.LastTimestamp),
+			ev.Count,
+			translateTimestampSince(ev.FirstTimestamp))
 	}
 	return translateTimestampSince(ev.FirstTimestamp)
 }
@@ -164,8 +182,32 @@ func FormatEventSource(es corev1.EventSource) string {
 }
 
 func getContainerLog(c *kubernetes.Clientset, ns, pname, cname string) (string, error) {
-	// TODO: get container logs
-	return "not implemented yet", nil
+	var tailN = int64(15)
+	req := c.CoreV1().Pods(ns).GetLogs(pname, &corev1.PodLogOptions{
+		TailLines: &tailN,
+		Container: cname,
+	})
+
+	readCloser, err := req.Stream(context.TODO())
+	if err != nil {
+		return "", err
+	}
+	defer readCloser.Close()
+
+	var (
+		line int
+		buf  bytes.Buffer
+		r    = bufio.NewScanner(readCloser)
+	)
+	for r.Scan() {
+		buf.Write(r.Bytes())
+		buf.WriteString("\n")
+		line++
+	}
+	if line == 0 {
+		buf.WriteString("<none>\n")
+	}
+	return buf.String(), nil
 }
 
 func getDeployment(c *kubernetes.Clientset, nn types.NamespacedName) (*appsv1.Deployment, error) {
@@ -267,6 +309,9 @@ func (d *Diagnoser) checkPodAvailable(printer *pritty.Printer, pod *corev1.Pod) 
 			"Error Conditions:\n%v\n", strings.Join(errMsgList, "\n"))
 
 		for _, cs := range notReadyCSList {
+			if !isContainerStarted(cs) {
+				continue
+			}
 			log, err := getContainerLog(d.Clientset, pod.Namespace, pod.Name, cs.Name)
 			if err != nil {
 				return false, err
