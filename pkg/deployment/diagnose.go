@@ -263,7 +263,6 @@ func (d *Diagnoser) checkPodAvailable(printer *pritty.Printer, pod *corev1.Pod) 
 
 	var (
 		errMsgList     []string
-		notImplList    []string
 		notReadyCSList []corev1.ContainerStatus
 	)
 	for _, cond := range pod.Status.Conditions {
@@ -279,11 +278,6 @@ func (d *Diagnoser) checkPodAvailable(printer *pritty.Printer, pod *corev1.Pod) 
 		case corev1.ContainersReady:
 			notReadyCSList = filterNotReadyContainers(pod.Status.ContainerStatuses)
 			errMsg = formatContainerStatuses(notReadyCSList)
-		default:
-			if _, ok := readypp[string(cond.Type)]; !ok {
-				notImplList = append(notImplList, string(cond.Type))
-				continue
-			}
 		}
 		if isStatusTrue(cond.Status) {
 			continue
@@ -300,9 +294,6 @@ func (d *Diagnoser) checkPodAvailable(printer *pritty.Printer, pod *corev1.Pod) 
 	}
 	warnEventList := filterWarnEvents(events)
 
-	if len(notImplList) != 0 {
-		fmt.Fprintf(printer.IOStreams.Out,
-			"Not Yet Implemented Conditions:\n%v\n", strings.Join(notImplList, "\n"))
 	}
 	if len(errMsgList) != 0 {
 		fmt.Fprintf(printer.IOStreams.Out,
