@@ -1,16 +1,20 @@
 package deployment
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"text/tabwriter"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -106,9 +110,57 @@ func formatContainerStatuses(css []corev1.ContainerStatus) string {
 	return strings.Join(statuses, "\n")
 }
 
-func formatWarningEvents(events []corev1.Event) string {
-	// TODO: formatting events
-	return "not implemented yet"
+func formatEvents(events []corev1.Event) string {
+	var buf bytes.Buffer
+	tw := tabwriter.NewWriter(&buf, 0, 8, 2, ' ', 0)
+	tw.Write([]byte("Reason\tAge\tFrom\tObject\tMessage\n"))
+	tw.Write([]byte("------\t----\t----\t------\t-------\n"))
+	for _, ev := range events {
+		tw.Write([]byte(fmt.Sprintf(
+			"%v\t%s\t%v\t%v\t%v\n",
+			ev.Reason,
+			FormatAge(ev),
+			FormatEventSource(ev.Source),
+			FormatInvolvedObject(ev.InvolvedObject),
+			strings.TrimSpace(ev.Message),
+		)))
+	}
+	tw.Flush()
+	return buf.String()
+}
+
+func FormatAge(ev corev1.Event) string {
+	if ev.Count > 1 {
+		return fmt.Sprintf("%s (x%d over %s)", translateTimestampSince(ev.LastTimestamp), ev.Count, translateTimestampSince(ev.FirstTimestamp))
+	}
+	return translateTimestampSince(ev.FirstTimestamp)
+}
+
+// translateTimestampSince returns the elapsed time since timestamp in
+// human-readable approximation.
+func translateTimestampSince(timestamp metav1.Time) string {
+	if timestamp.IsZero() {
+		return "<unknown>"
+	}
+	return duration.HumanDuration(time.Since(timestamp.Time))
+}
+
+// FormatInvolvedObject formats ref.
+func FormatInvolvedObject(ref corev1.ObjectReference) string {
+	ivo := []string{ref.Kind, ref.Name}
+	if ref.FieldPath != "" {
+		ivo = append(ivo, ref.FieldPath)
+	}
+	return strings.Join(ivo, "/")
+}
+
+// FormatEventSource formats EventSource as a comma separated string excluding Host when empty
+func FormatEventSource(es corev1.EventSource) string {
+	EventSourceString := []string{es.Component}
+	if len(es.Host) > 0 {
+		EventSourceString = append(EventSourceString, es.Host)
+	}
+	return strings.Join(EventSourceString, ", ")
 }
 
 func getContainerLog(c *kubernetes.Clientset, ns, pname, cname string) (string, error) {
@@ -225,7 +277,7 @@ func (d *Diagnoser) checkPodAvailable(printer *pritty.Printer, pod *corev1.Pod) 
 	}
 	if len(warnEventList) != 0 {
 		fmt.Fprintf(printer.IOStreams.Out,
-			"Warning Events:\n%v\n", formatWarningEvents(warnEventList))
+			"Warning Events:\n%v\n", formatEvents(warnEventList))
 	}
 	return len(notImplList) == 0 &&
 		len(errMsgList) == 0 &&
