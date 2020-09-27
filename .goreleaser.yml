@@ -31,7 +31,7 @@ brews:
 - name: kubectl-diagnose
   tap:
     owner: Ladicle
-    name: homebrew-kubectl-diagnose
+    name: homebrew-brew
     token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
   description: "Diagnose Kubernetes resource"
   homepage: "https://github.com/Ladicle/kubectl-diagnose"
