@@ -37,7 +37,5 @@ brews:
   homepage: "https://github.com/Ladicle/kubectl-diagnose"
 dockers:
 - image_templates:
-  - "ghcr.io/Ladicle/kubectl-diagnose:{{ .Tag }}"
-  - "ghcr.io/Ladicle/kubectl-diagnose:v{{ .Major }}"
-  - "ghcr.io/Ladicle/kubectl-diagnose:v{{ .Major }}.{{ .Minor }}"
-  - "ghcr.io/Ladicle/kubectl-diagnose:latest"
+  - "docker.pkg.github.com/ladicle/kubectl-diagnose/cli:{{ .Tag }}"
+  - "docker.pkg.github.com/ladicle/kubectl-diagnose/cli:latest"
