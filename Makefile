@@ -6,7 +6,7 @@ OUTDIR=dist
 build:
 	goreleaser build
 
-check: build
+check:
 	go vet $(PKGROOT)/...
 	go test $(PKGROOT)/...
 
