@@ -1,0 +1,17 @@
+name: "Test go packages"
+on: [pull_request, push]
+env:
+  GO: 1.14.x
+jobs:
+  kind:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ env.GO }}
+    - name: Run test.sh
+      run: |
+        make check
