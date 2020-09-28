@@ -4,7 +4,7 @@ OUTDIR=dist
 .PHONY: build check clean
 
 build:
-	goreleaser build
+	goreleaser build --snapshot --rm-dist
 
 check:
 	go vet $(PKGROOT)/...
