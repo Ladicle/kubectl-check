@@ -24,7 +24,7 @@ func NewDeploymentCmd(f cmdutil.Factory, printer *pritty.Printer) *cobra.Command
 	opts := DeploymentOptions{}
 	cmd := &cobra.Command{
 		Use:                   "deployment <name>",
-		Aliases:               []string{"deploy"},
+		Aliases:               []string{"deploy", "dp"},
 		DisableFlagsInUseLine: true,
 		Short:                 "Diagnose Deployment resource",
 		Run: func(cmd *cobra.Command, args []string) {
