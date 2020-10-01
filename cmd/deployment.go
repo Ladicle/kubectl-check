@@ -23,7 +23,8 @@ type DeploymentOptions struct {
 func NewDeploymentCmd(f cmdutil.Factory, printer *pritty.Printer) *cobra.Command {
 	opts := DeploymentOptions{}
 	cmd := &cobra.Command{
-		Use:                   "deploy <name>",
+		Use:                   "deployment <name>",
+		Aliases:               []string{"deploy"},
 		DisableFlagsInUseLine: true,
 		Short:                 "Diagnose Deployment resource",
 		Run: func(cmd *cobra.Command, args []string) {
