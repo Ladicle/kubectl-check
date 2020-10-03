@@ -43,6 +43,7 @@ func NewDiagnoseCmd() *cobra.Command {
 	printer.TTY = term.TTY{Out: ioStreams.Out}.IsTerminalOut()
 
 	cmds.AddCommand(NewDeploymentCmd(f, printer))
+	cmds.AddCommand(NewStatefulSetCmd(f, printer))
 
 	return cmds
 }
