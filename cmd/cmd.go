@@ -44,6 +44,7 @@ func NewDiagnoseCmd() *cobra.Command {
 
 	cmds.AddCommand(NewDeploymentCmd(f, printer))
 	cmds.AddCommand(NewStatefulSetCmd(f, printer))
+	cmds.AddCommand(NewDaemonSetCmd(f, printer))
 
 	return cmds
 }
