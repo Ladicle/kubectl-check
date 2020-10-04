@@ -39,6 +39,7 @@ func (d *Diagnoser) Diagnose(printer *pritty.Printer) error {
 
 	if sts.Status.ReadyReplicas == sts.Status.Replicas {
 		fmt.Fprintf(printer.IOStreams.Out, "%v is ready\n", d.Target)
+		return nil
 	}
 
 	fmt.Fprintf(printer.IOStreams.Out, "Deployment %q is not ready (%d/%d):\n\n",
