@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/term"
+
+	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 )
 
 var (
