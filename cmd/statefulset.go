@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
+	"github.com/Ladicle/kubectl-diagnose/pkg/diagnoser"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 	"github.com/Ladicle/kubectl-diagnose/pkg/statefulset"
 	dcmdutil "github.com/Ladicle/kubectl-diagnose/pkg/util/cmd"
@@ -62,6 +63,6 @@ func (o *StatefulSetOptions) Complete(f cmdutil.Factory) error {
 
 func (o *StatefulSetOptions) Run(printer *pritty.Printer) error {
 	target := types.NamespacedName{Name: o.Name, Namespace: o.Namespace}
-	diagnoser := statefulset.NewDiagnoser(target, o.clientset)
+	diagnoser := statefulset.NewStatefulSetDiagnoser(diagnoser.NewDiagnoser(target, o.clientset))
 	return diagnoser.Diagnose(printer)
 }

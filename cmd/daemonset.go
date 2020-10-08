@@ -9,6 +9,7 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/Ladicle/kubectl-diagnose/pkg/daemonset"
+	"github.com/Ladicle/kubectl-diagnose/pkg/diagnoser"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 	dcmdutil "github.com/Ladicle/kubectl-diagnose/pkg/util/cmd"
 )
@@ -62,6 +63,6 @@ func (o *DaemonSetOptions) Complete(f cmdutil.Factory) error {
 
 func (o *DaemonSetOptions) Run(printer *pritty.Printer) error {
 	target := types.NamespacedName{Name: o.Name, Namespace: o.Namespace}
-	diagnoser := daemonset.NewDiagnoser(target, o.clientset)
+	diagnoser := daemonset.NewDaemonSetDiagnoser(diagnoser.NewDiagnoser(target, o.clientset))
 	return diagnoser.Diagnose(printer)
 }

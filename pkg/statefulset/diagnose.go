@@ -11,27 +11,22 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/Ladicle/kubectl-diagnose/pkg/diagnoser"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pod"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 )
 
-// NewDiagnoser creates Statefulset Diagnoser resource.
-func NewDiagnoser(target types.NamespacedName, clientset *kubernetes.Clientset) *Diagnoser {
-	d := &Diagnoser{
-		Target:    target,
-		Clientset: clientset,
-	}
-	return d
+// NewStatefulSetDiagnoser creates Statefulset Diagnoser resource.
+func NewStatefulSetDiagnoser(diagnoser *diagnoser.Diagnoser) *StatefulSetDiagnoser {
+	return &StatefulSetDiagnoser{Diagnoser: diagnoser}
 }
 
-// Diagnoser diagnoses a target statefulset resource.
-type Diagnoser struct {
-	Target types.NamespacedName
-
-	*kubernetes.Clientset
+// StatefulSetDiagnoser diagnoses a target statefulset resource.
+type StatefulSetDiagnoser struct {
+	*diagnoser.Diagnoser
 }
 
-func (d *Diagnoser) Diagnose(printer *pritty.Printer) error {
+func (d *StatefulSetDiagnoser) Diagnose(printer *pritty.Printer) error {
 	sts, err := getStatefulSet(d.Clientset, d.Target)
 	if err != nil {
 		return err

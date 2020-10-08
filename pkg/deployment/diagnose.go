@@ -12,28 +12,23 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/Ladicle/kubectl-diagnose/pkg/diagnoser"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pod"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 	condutil "github.com/Ladicle/kubectl-diagnose/pkg/util/cond"
 )
 
-// NewDiagnoser creates Deployment Diagnoser resource.
-func NewDiagnoser(target types.NamespacedName, clientset *kubernetes.Clientset) *Diagnoser {
-	d := &Diagnoser{
-		Target:    target,
-		Clientset: clientset,
-	}
-	return d
+// NewDeploymentDiagnoser creates Deployment Diagnoser resource.
+func NewDeploymentDiagnoser(diagnoser *diagnoser.Diagnoser) *DeploymentDiagnoser {
+	return &DeploymentDiagnoser{Diagnoser: diagnoser}
 }
 
-// Diagnoser diagnoses a target deployment resource.
-type Diagnoser struct {
-	Target types.NamespacedName
-
-	*kubernetes.Clientset
+// DeploymentDiagnoser diagnoses a target deployment resource.
+type DeploymentDiagnoser struct {
+	*diagnoser.Diagnoser
 }
 
-func (d *Diagnoser) Diagnose(printer *pritty.Printer) error {
+func (d *DeploymentDiagnoser) Diagnose(printer *pritty.Printer) error {
 	deploy, err := getDeployment(d.Clientset, d.Target)
 	if err != nil {
 		return err
@@ -62,7 +57,7 @@ func getDeployment(c *kubernetes.Clientset, nn types.NamespacedName) (*appsv1.De
 		context.Background(), nn.Name, metav1.GetOptions{})
 }
 
-func (d *Diagnoser) checkDeploymentAvailable(deploy *appsv1.Deployment) (bool, error) {
+func (d *DeploymentDiagnoser) checkDeploymentAvailable(deploy *appsv1.Deployment) (bool, error) {
 	for _, cond := range deploy.Status.Conditions {
 		if cond.Type == appsv1.DeploymentAvailable {
 			return condutil.IsStatusTrue(cond.Status), nil

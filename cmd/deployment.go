@@ -62,6 +62,6 @@ func (o *DeploymentOptions) Complete(f cmdutil.Factory) error {
 
 func (o *DeploymentOptions) Run(printer *pritty.Printer) error {
 	target := types.NamespacedName{Name: o.Name, Namespace: o.Namespace}
-	diagnoser := deployment.NewDiagnoser(target, o.clientset)
+	diagnoser := deployment.NewDeploymentDiagnoser(target, o.clientset)
 	return diagnoser.Diagnose(printer)
 }
