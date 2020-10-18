@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestDeploymentValidate(t *testing.T) {
+func TestCmdValidate(t *testing.T) {
 	tests := []struct {
 		name string
 		// validation arguments
@@ -16,12 +16,12 @@ func TestDeploymentValidate(t *testing.T) {
 	}{
 		{
 			name:    "No arguments",
-			wantErr: errors.New("invalid number of arguments: Deployment <name> is a required argument"),
+			wantErr: errors.New("invalid number of arguments: test <name> is a required argument"),
 		},
 		{
 			name:    "2 arguments",
 			args:    []string{"foo", "bar"},
-			wantErr: errors.New("invalid number of arguments: Deployment <name> is a required argument"),
+			wantErr: errors.New("invalid number of arguments: test <name> is a required argument"),
 		},
 		{
 			name:     "Valid argument",
@@ -31,7 +31,7 @@ func TestDeploymentValidate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opt := DeploymentOptions{}
+			opt := CmdOptions{Resource: "test"}
 			err := opt.Validate(tt.args)
 			if err != nil {
 				if tt.wantErr == nil || err.Error() != tt.wantErr.Error() {

@@ -1,4 +1,4 @@
-package deployment
+package diagnoser
 
 import (
 	"context"
@@ -12,23 +12,22 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/Ladicle/kubectl-diagnose/pkg/diagnoser"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pod"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 	condutil "github.com/Ladicle/kubectl-diagnose/pkg/util/cond"
 )
 
 // NewDeploymentDiagnoser creates Deployment Diagnoser resource.
-func NewDeploymentDiagnoser(diagnoser *diagnoser.Diagnoser) *DeploymentDiagnoser {
-	return &DeploymentDiagnoser{Diagnoser: diagnoser}
+func NewDeploymentDiagnoser(opts *Options) Diagnoser {
+	return &DeploymentDiagnoser{Options: opts}
 }
 
 // DeploymentDiagnoser diagnoses a target deployment resource.
 type DeploymentDiagnoser struct {
-	*diagnoser.Diagnoser
+	*Options
 }
 
-func (d *DeploymentDiagnoser) Diagnose(printer *pritty.Printer) error {
+func (d DeploymentDiagnoser) Diagnose(printer *pritty.Printer) error {
 	deploy, err := getDeployment(d.Clientset, d.Target)
 	if err != nil {
 		return err
@@ -45,7 +44,7 @@ func (d *DeploymentDiagnoser) Diagnose(printer *pritty.Printer) error {
 
 	fmt.Fprintf(printer.IOStreams.Out, "Deployment %q is not available (%d/%d):\n\n",
 		d.Target, deploy.Status.AvailableReplicas, deploy.Status.Replicas)
-	pods, err := getLatestPods(d.Clientset, deploy)
+	pods, err := getDeployLatestPods(d.Clientset, deploy)
 	if err != nil {
 		return err
 	}
@@ -66,7 +65,7 @@ func (d *DeploymentDiagnoser) checkDeploymentAvailable(deploy *appsv1.Deployment
 	return false, nil
 }
 
-func getLatestPods(c *kubernetes.Clientset, deploy *appsv1.Deployment) (*corev1.PodList, error) {
+func getDeployLatestPods(c *kubernetes.Clientset, deploy *appsv1.Deployment) (*corev1.PodList, error) {
 	rss, err := c.AppsV1().ReplicaSets(deploy.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: labels.Set(deploy.Spec.Selector.MatchLabels).String(),
 	})

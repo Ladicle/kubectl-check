@@ -1,4 +1,4 @@
-package daemonset
+package diagnoser
 
 import (
 	"context"
@@ -12,22 +12,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/Ladicle/kubectl-diagnose/pkg/diagnoser"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pod"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 )
 
 // NewDaemonSetDiagnoser creates Statefulset Diagnoser resource.
-func NewDaemonSetDiagnoser(diagnoser *diagnoser.Diagnoser) *DaemonSetDiagnoser {
-	return &DaemonSetDiagnoser{Diagnoser: diagnoser}
+func NewDaemonSetDiagnoser(opts *Options) Diagnoser {
+	return &DaemonSetDiagnoser{Options: opts}
 }
 
 // DaemonSetDiagnoser diagnoses a target statefulset resource.
 type DaemonSetDiagnoser struct {
-	*diagnoser.Diagnoser
+	*Options
 }
 
-func (d *DaemonSetDiagnoser) Diagnose(printer *pritty.Printer) error {
+func (d DaemonSetDiagnoser) Diagnose(printer *pritty.Printer) error {
 	ds, err := getDaemonSet(d.Clientset, d.Target)
 	if err != nil {
 		return err
@@ -40,7 +39,7 @@ func (d *DaemonSetDiagnoser) Diagnose(printer *pritty.Printer) error {
 
 	fmt.Fprintf(printer.IOStreams.Out, "DaemonSet %q is not ready (%d/%d):\n\n",
 		d.Target, ds.Status.NumberReady, ds.Status.DesiredNumberScheduled)
-	pods, err := getChildPods(d.Clientset, ds)
+	pods, err := getDSChildPods(d.Clientset, ds)
 	if err != nil {
 		return err
 	}
@@ -52,7 +51,7 @@ func getDaemonSet(c *kubernetes.Clientset, nn types.NamespacedName) (*appsv1.Dae
 		Get(context.Background(), nn.Name, metav1.GetOptions{})
 }
 
-func getChildPods(c *kubernetes.Clientset, ds *appsv1.DaemonSet) (*corev1.PodList, error) {
+func getDSChildPods(c *kubernetes.Clientset, ds *appsv1.DaemonSet) (*corev1.PodList, error) {
 	if ds.Status.ObservedGeneration == 0 {
 		return nil, errors.New(".state.observedGeneration is empty")
 	}
