@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 
 	// Initialize all known client auth plugins.
+	"k8s.io/apimachinery/pkg/types"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/spf13/cobra"
@@ -13,6 +15,7 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/term"
 
+	"github.com/Ladicle/kubectl-diagnose/pkg/diagnoser"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 )
 
@@ -51,4 +54,43 @@ func NewDiagnoseCmd() *cobra.Command {
 	cmds.AddCommand(NewDaemonSetCmd(f, printer))
 
 	return cmds
+}
+
+type CmdOptions struct {
+	Resource string
+	Name     string
+
+	diagnoser         diagnoser.Diagnoser
+	createDiagnoserFn func(opts *diagnoser.Options) diagnoser.Diagnoser
+}
+
+func (o *CmdOptions) Validate(args []string) error {
+	if len(args) != 1 {
+		return errors.New(
+			fmt.Sprintf("invalid number of arguments: %v <name> is a required argument", o.Resource))
+	}
+	o.Name = args[0]
+	return nil
+}
+
+func (o *CmdOptions) Complete(f cmdutil.Factory) error {
+	c, err := f.KubernetesClientSet()
+	if err != nil {
+		return err
+	}
+
+	k8sCfg := f.ToRawKubeConfigLoader()
+	ns, _, err := k8sCfg.Namespace()
+	if err != nil {
+		return err
+	}
+
+	target := types.NamespacedName{Name: o.Name, Namespace: ns}
+	opts := diagnoser.NewOptions(target, c)
+	o.diagnoser = o.createDiagnoserFn(opts)
+	return nil
+}
+
+func (o *CmdOptions) Run(printer *pritty.Printer) error {
+	return o.diagnoser.Diagnose(printer)
 }

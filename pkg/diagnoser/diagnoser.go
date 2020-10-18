@@ -3,20 +3,26 @@ package diagnoser
 import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 )
 
-// NewDiagnoser creates Diagnoser resource.
-func NewDiagnoser(target types.NamespacedName, clientset *kubernetes.Clientset) *Diagnoser {
-	d := &Diagnoser{
+// NewOptions creates Diagnoser resource.
+func NewOptions(target types.NamespacedName, clientset *kubernetes.Clientset) *Options {
+	d := &Options{
 		Target:    target,
 		Clientset: clientset,
 	}
 	return d
 }
 
-// Diagnoser diagnoses a target resource.
-type Diagnoser struct {
+// Options diagnoses a target resource.
+type Options struct {
 	Target types.NamespacedName
 
 	*kubernetes.Clientset
+}
+
+type Diagnoser interface {
+	Diagnose(printer *pritty.Printer) error
 }

@@ -1,4 +1,4 @@
-package statefulset
+package diagnoser
 
 import (
 	"context"
@@ -11,19 +11,18 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/Ladicle/kubectl-diagnose/pkg/diagnoser"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pod"
 	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
 )
 
 // NewStatefulSetDiagnoser creates Statefulset Diagnoser resource.
-func NewStatefulSetDiagnoser(diagnoser *diagnoser.Diagnoser) *StatefulSetDiagnoser {
-	return &StatefulSetDiagnoser{Diagnoser: diagnoser}
+func NewStatefulSetDiagnoser(opts *Options) Diagnoser {
+	return &StatefulSetDiagnoser{Options: opts}
 }
 
 // StatefulSetDiagnoser diagnoses a target statefulset resource.
 type StatefulSetDiagnoser struct {
-	*diagnoser.Diagnoser
+	*Options
 }
 
 func (d *StatefulSetDiagnoser) Diagnose(printer *pritty.Printer) error {
@@ -39,7 +38,7 @@ func (d *StatefulSetDiagnoser) Diagnose(printer *pritty.Printer) error {
 
 	fmt.Fprintf(printer.IOStreams.Out, "Deployment %q is not ready (%d/%d):\n\n",
 		d.Target, sts.Status.ReadyReplicas, sts.Status.Replicas)
-	pods, err := getChildPods(d.Clientset, sts)
+	pods, err := getStsChildPods(d.Clientset, sts)
 	if err != nil {
 		return err
 	}
@@ -51,7 +50,7 @@ func getStatefulSet(c *kubernetes.Clientset, nn types.NamespacedName) (*appsv1.S
 		Get(context.Background(), nn.Name, metav1.GetOptions{})
 }
 
-func getChildPods(c *kubernetes.Clientset, sts *appsv1.StatefulSet) (*corev1.PodList, error) {
+func getStsChildPods(c *kubernetes.Clientset, sts *appsv1.StatefulSet) (*corev1.PodList, error) {
 	if sts.Status.CurrentRevision == "" {
 		return nil, errors.New(".state.currentRevision is empty")
 	}
