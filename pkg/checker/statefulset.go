@@ -55,7 +55,7 @@ func (ssc *StatefulSetChecker) getLatestPods(sts *appsv1.StatefulSet) (*corev1.P
 	opt := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%v=%v",
 			appsv1.ControllerRevisionHashLabelKey,
-			sts.Status.CurrentRevision),
+			sts.Status.UpdateRevision),
 	}
 	return ssc.Clientset.CoreV1().Pods(sts.Namespace).List(context.Background(), opt)
 }

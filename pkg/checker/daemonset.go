@@ -37,7 +37,7 @@ func (dsc DaemonSetChecker) Check(printer *pritty.Printer) error {
 
 	fmt.Fprintf(printer.IOStreams.Out, "DaemonSet %q is not ready (%d/%d):\n\n",
 		dsc.Target, ds.Status.NumberReady, ds.Status.DesiredNumberScheduled)
-	pods, err := dsc.getDSChildPods(ds)
+	pods, err := dsc.getLatestPods(ds)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (dsc DaemonSetChecker) getTarget() (*appsv1.DaemonSet, error) {
 		Get(context.Background(), dsc.Target.Name, metav1.GetOptions{})
 }
 
-func (dsc DaemonSetChecker) getDSChildPods(ds *appsv1.DaemonSet) (*corev1.PodList, error) {
+func (dsc DaemonSetChecker) getLatestPods(ds *appsv1.DaemonSet) (*corev1.PodList, error) {
 	if ds.Status.ObservedGeneration == 0 {
 		return nil, errors.New(".state.observedGeneration is empty")
 	}
