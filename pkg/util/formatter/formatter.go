@@ -18,15 +18,15 @@ func FormatContainerStatuses(podName string, css []corev1.ContainerStatus) strin
 		switch {
 		case cs.Ready:
 			statuses = append(statuses,
-				fmt.Sprintf("[Running] Pod/%v/Container{%v}:", podName, cs.Name))
+				fmt.Sprintf("[Running] Pod/%v/%v:", podName, cs.Name))
 		case cs.State.Waiting != nil:
 			statuses = append(statuses,
-				fmt.Sprintf("[%v] Pod/%v/Container{%v}: %v (restarted x%v)",
+				fmt.Sprintf("[%v] Pod/%v/%v: %v (restarted x%v)",
 					cs.State.Waiting.Reason, podName, cs.Name,
 					cs.State.Waiting.Message, cs.RestartCount))
 		case cs.State.Terminated != nil:
 			statuses = append(statuses,
-				fmt.Sprintf("[%v] Pod/%v/Container{%v}: %v (exit-code %v)",
+				fmt.Sprintf("[%v] Pod/%v/%v: %v (exit-code %v)",
 					cs.State.Terminated.Reason, podName, cs.Name,
 					cs.State.Terminated.Message, cs.State.Terminated.ExitCode))
 		}
@@ -76,7 +76,9 @@ func translateTimestampSince(timestamp metav1.Time) string {
 func FormatInvolvedObject(ref corev1.ObjectReference) string {
 	ivo := []string{ref.Kind, ref.Name}
 	if ref.FieldPath != "" {
-		ivo = append(ivo, ref.FieldPath)
+		path := strings.TrimPrefix(ref.FieldPath, "spec.containers{")
+		path = strings.TrimSuffix(path, "}")
+		ivo = append(ivo, path)
 	}
 	return strings.Join(ivo, "/")
 }
