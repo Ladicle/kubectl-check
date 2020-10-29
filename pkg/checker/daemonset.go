@@ -9,8 +9,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/Ladicle/kubectl-check/pkg/pod"
 	"github.com/Ladicle/kubectl-check/pkg/pritty"
@@ -26,32 +24,32 @@ type DaemonSetChecker struct {
 	*Options
 }
 
-func (d DaemonSetChecker) Check(printer *pritty.Printer) error {
-	ds, err := getDaemonSet(d.Clientset, d.Target)
+func (dsc DaemonSetChecker) Check(printer *pritty.Printer) error {
+	ds, err := dsc.getTarget()
 	if err != nil {
 		return err
 	}
 
 	if ds.Status.NumberReady == ds.Status.DesiredNumberScheduled {
-		fmt.Fprintf(printer.IOStreams.Out, "%v is ready\n", d.Target)
+		fmt.Fprintf(printer.IOStreams.Out, "%v is ready\n", dsc.Target)
 		return nil
 	}
 
 	fmt.Fprintf(printer.IOStreams.Out, "DaemonSet %q is not ready (%d/%d):\n\n",
-		d.Target, ds.Status.NumberReady, ds.Status.DesiredNumberScheduled)
-	pods, err := getDSChildPods(d.Clientset, ds)
+		dsc.Target, ds.Status.NumberReady, ds.Status.DesiredNumberScheduled)
+	pods, err := dsc.getDSChildPods(ds)
 	if err != nil {
 		return err
 	}
-	return pod.ReportPodsDetail(d.Clientset, printer, pods.Items)
+	return pod.ReportPodsDetail(dsc.Clientset, printer, pods.Items)
 }
 
-func getDaemonSet(c *kubernetes.Clientset, nn types.NamespacedName) (*appsv1.DaemonSet, error) {
-	return c.AppsV1().DaemonSets(nn.Namespace).
-		Get(context.Background(), nn.Name, metav1.GetOptions{})
+func (dsc DaemonSetChecker) getTarget() (*appsv1.DaemonSet, error) {
+	return dsc.Clientset.AppsV1().DaemonSets(dsc.Target.Namespace).
+		Get(context.Background(), dsc.Target.Name, metav1.GetOptions{})
 }
 
-func getDSChildPods(c *kubernetes.Clientset, ds *appsv1.DaemonSet) (*corev1.PodList, error) {
+func (dsc DaemonSetChecker) getDSChildPods(ds *appsv1.DaemonSet) (*corev1.PodList, error) {
 	if ds.Status.ObservedGeneration == 0 {
 		return nil, errors.New(".state.observedGeneration is empty")
 	}
@@ -66,5 +64,5 @@ func getDSChildPods(c *kubernetes.Clientset, ds *appsv1.DaemonSet) (*corev1.PodL
 			ds.Status.ObservedGeneration,
 			strings.Join(labelSelector, ",")),
 	}
-	return c.CoreV1().Pods(ds.Namespace).List(context.Background(), opt)
+	return dsc.Clientset.CoreV1().Pods(ds.Namespace).List(context.Background(), opt)
 }

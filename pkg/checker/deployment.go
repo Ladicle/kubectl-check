@@ -9,8 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/Ladicle/kubectl-check/pkg/pod"
 	"github.com/Ladicle/kubectl-check/pkg/pritty"
@@ -27,36 +25,36 @@ type DeploymentChecker struct {
 	*Options
 }
 
-func (d DeploymentChecker) Check(printer *pritty.Printer) error {
-	deploy, err := getDeployment(d.Clientset, d.Target)
+func (dc DeploymentChecker) Check(printer *pritty.Printer) error {
+	deploy, err := dc.getTarget()
 	if err != nil {
 		return err
 	}
 
-	available, err := d.checkDeploymentAvailable(deploy)
+	available, err := dc.checkDeploymentAvailable(deploy)
 	if err != nil {
 		return err
 	}
 	if available {
-		fmt.Fprintf(printer.IOStreams.Out, "%v is available\n", d.Target)
+		fmt.Fprintf(printer.IOStreams.Out, "%v is available\n", dc.Target)
 		return nil
 	}
 
 	fmt.Fprintf(printer.IOStreams.Out, "Deployment %q is not available (%d/%d):\n\n",
-		d.Target, deploy.Status.AvailableReplicas, deploy.Status.Replicas)
-	pods, err := getDeployLatestPods(d.Clientset, deploy)
+		dc.Target, deploy.Status.AvailableReplicas, deploy.Status.Replicas)
+	pods, err := dc.getLatestPods(deploy)
 	if err != nil {
 		return err
 	}
-	return pod.ReportPodsDetail(d.Clientset, printer, pods.Items)
+	return pod.ReportPodsDetail(dc.Clientset, printer, pods.Items)
 }
 
-func getDeployment(c *kubernetes.Clientset, nn types.NamespacedName) (*appsv1.Deployment, error) {
-	return c.AppsV1().Deployments(nn.Namespace).Get(
-		context.Background(), nn.Name, metav1.GetOptions{})
+func (dc *DeploymentChecker) getTarget() (*appsv1.Deployment, error) {
+	return dc.Clientset.AppsV1().Deployments(dc.Target.Namespace).Get(
+		context.Background(), dc.Target.Name, metav1.GetOptions{})
 }
 
-func (d *DeploymentChecker) checkDeploymentAvailable(deploy *appsv1.Deployment) (bool, error) {
+func (dc *DeploymentChecker) checkDeploymentAvailable(deploy *appsv1.Deployment) (bool, error) {
 	for _, cond := range deploy.Status.Conditions {
 		if cond.Type == appsv1.DeploymentAvailable {
 			return condutil.IsStatusTrue(cond.Status), nil
@@ -65,8 +63,8 @@ func (d *DeploymentChecker) checkDeploymentAvailable(deploy *appsv1.Deployment) 
 	return false, nil
 }
 
-func getDeployLatestPods(c *kubernetes.Clientset, deploy *appsv1.Deployment) (*corev1.PodList, error) {
-	rss, err := c.AppsV1().ReplicaSets(deploy.Namespace).List(context.Background(), metav1.ListOptions{
+func (dc DeploymentChecker) getLatestPods(deploy *appsv1.Deployment) (*corev1.PodList, error) {
+	rss, err := dc.Clientset.AppsV1().ReplicaSets(deploy.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: labels.Set(deploy.Spec.Selector.MatchLabels).String(),
 	})
 	if err != nil {
@@ -93,5 +91,5 @@ func getDeployLatestPods(c *kubernetes.Clientset, deploy *appsv1.Deployment) (*c
 			appsv1.DefaultDeploymentUniqueLabelKey,
 			tplhash),
 	}
-	return c.CoreV1().Pods(deploy.Namespace).List(context.Background(), opt)
+	return dc.Clientset.CoreV1().Pods(deploy.Namespace).List(context.Background(), opt)
 }
