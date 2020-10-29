@@ -62,7 +62,7 @@ func NewCheckCmd() *cobra.Command {
 	cmds.AddCommand(NewDaemonSetCmd(f, printer))
 
 	cmds.PersistentFlags().BoolVarP(&optionsFlag, "options", "", false, "Show full options of this command")
-	cmds.SetUsageTemplate(usageTemplate)
+	cmds.SetUsageTemplate(getUsageTemplate(printer))
 
 	return cmds
 }

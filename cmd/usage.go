@@ -1,15 +1,24 @@
 package cmd
 
-var usageTemplate = `Usage:{{if .Runnable}}
-  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+import (
+	"fmt"
 
-Resources:{{range .Commands}}{{if .IsAvailableCommand}}
-  - {{.NameAndAliases}}{{end}}{{end}}{{end}}{{if .HasExample}}
+	"github.com/Ladicle/kubectl-check/pkg/pritty"
+)
 
-Examples:
+var usageTemplate = `%v:{{if .Runnable}}
+  kubectl {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+
+%v:{{range .Commands}}{{if .IsAvailableCommand}}
+  - {{.NameAndAliases}}{{end}}{{end}}{{end}}{{if not .HasAvailableSubCommands}}
+
+%v:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+%v:
 {{.Example}}{{end}}
 
-Flags:{{if .HasAvailableSubCommands}}
+%v:{{if .HasAvailableSubCommands}}
   --version    Version for check
   --options    Show full options of this command
   -h, --help   Show this message
@@ -19,3 +28,13 @@ Flags:{{if .HasAvailableSubCommands}}
 Use "{{.CommandPath}} --options" for full information about global flags.{{if .HasAvailableSubCommands}}
 Use "{{.CommandPath}} <resource> --help" for more information about each resource.{{end}}
 `
+
+func getUsageTemplate(p *pritty.Printer) string {
+	return fmt.Sprintf(usageTemplate,
+		p.SprintHeader("Usage"),
+		p.SprintHeader("Resource"),
+		p.SprintHeader("Aliases"),
+		p.SprintHeader("Example"),
+		p.SprintHeader("Flags"),
+	)
+}
