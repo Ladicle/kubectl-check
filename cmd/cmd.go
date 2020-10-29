@@ -26,12 +26,21 @@ var (
 )
 
 func NewCheckCmd() *cobra.Command {
+	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
+
+	var optionsFlag bool
 	cmds := &cobra.Command{
-		Use:                   "check",
+		Use:                   "check [flags...] <resource> <name>",
 		Version:               fmt.Sprintf("%v @%v", version, commit),
 		DisableFlagsInUseLine: true,
 		Short:                 "Check Kubernetes resource status",
-		Run:                   cmdutil.DefaultSubCommandRun(os.Stderr),
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if optionsFlag {
+				fmt.Fprint(ioStreams.Out, "The following options can be passed to any command:\n\n"+cmd.Flags().FlagUsages())
+				os.Exit(0)
+			}
+		},
+		Run: cmdutil.DefaultSubCommandRun(os.Stderr),
 	}
 
 	flags := cmds.PersistentFlags()
@@ -43,7 +52,6 @@ func NewCheckCmd() *cobra.Command {
 	matchVersionFlags.AddFlags(flags)
 
 	f := cmdutil.NewFactory(matchVersionFlags)
-	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 
 	printer := &pritty.Printer{IOStreams: ioStreams}
 	cmds.PersistentFlags().BoolVarP(&printer.Color, "color", "R", false, "Enable color output even if stdout is not a terminal")
@@ -52,6 +60,9 @@ func NewCheckCmd() *cobra.Command {
 	cmds.AddCommand(NewDeploymentCmd(f, printer))
 	cmds.AddCommand(NewStatefulSetCmd(f, printer))
 	cmds.AddCommand(NewDaemonSetCmd(f, printer))
+
+	cmds.PersistentFlags().BoolVarP(&optionsFlag, "options", "", false, "Show full options of this command")
+	cmds.SetUsageTemplate(usageTemplate)
 
 	return cmds
 }

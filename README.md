@@ -12,19 +12,25 @@ $ brew install Ladicle/brew/kubectl-check
 ## Usage
 
 ```bash
-$ kubectl check
+$ kubectl check -h
 Check Kubernetes resource status
 
 Usage:
-  check
-  check [command]
+  check [flags...] <resource> <name>
 
-Available Commands:
-  daemonset   Check DaemonSet resource
-  deployment  Check Deployment resource
-  help        Help about any command
-  statefulset Check StatefulSet resource
-...
+Resources:
+  - daemonset, ds
+  - deployment, deploy, dp
+  - statefulset, ststig
+
+Flags:
+  --version    Version for check
+  --options    Show full options of this command
+  -h, --help   Show this message
+  -R, --color  Enable color output even if stdout is not a terminal
+
+Use "check --options" for full information about global flags.
+Use "check [resource] --help" for more information about each resource.
 ```
 
 ## Getting Started

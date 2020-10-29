@@ -17,7 +17,7 @@ func NewDaemonSetCmd(f cmdutil.Factory, printer *pritty.Printer) *cobra.Command 
 		},
 	}
 	cmd := &cobra.Command{
-		Use:                   "daemonset <name>",
+		Use:                   "daemonset [flags...] <name>",
 		Aliases:               []string{"ds"},
 		DisableFlagsInUseLine: true,
 		Short:                 "Check DaemonSet resource",

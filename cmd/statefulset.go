@@ -17,7 +17,7 @@ func NewStatefulSetCmd(f cmdutil.Factory, printer *pritty.Printer) *cobra.Comman
 		},
 	}
 	cmd := &cobra.Command{
-		Use:                   "statefulset <name>",
+		Use:                   "statefulset [flags...] <name>",
 		Aliases:               []string{"sts"},
 		DisableFlagsInUseLine: true,
 		Short:                 "Check StatefulSet resource",
