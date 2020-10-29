@@ -1,4 +1,4 @@
-module github.com/Ladicle/kubectl-diagnose
+module github.com/Ladicle/kubectl-check
 
 go 1.15
 

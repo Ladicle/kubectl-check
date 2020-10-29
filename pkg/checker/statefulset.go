@@ -1,4 +1,4 @@
-package diagnoser
+package checker
 
 import (
 	"context"
@@ -11,21 +11,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/Ladicle/kubectl-diagnose/pkg/pod"
-	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
+	"github.com/Ladicle/kubectl-check/pkg/pod"
+	"github.com/Ladicle/kubectl-check/pkg/pritty"
 )
 
-// NewStatefulSetDiagnoser creates Statefulset Diagnoser resource.
-func NewStatefulSetDiagnoser(opts *Options) Diagnoser {
-	return &StatefulSetDiagnoser{Options: opts}
+// NewStatefulSetChecker creates Statefulset Checker resource.
+func NewStatefulSetChecker(opts *Options) Checker {
+	return &StatefulSetChecker{Options: opts}
 }
 
-// StatefulSetDiagnoser diagnoses a target statefulset resource.
-type StatefulSetDiagnoser struct {
+// StatefulSetChecker checks a target statefulset resource.
+type StatefulSetChecker struct {
 	*Options
 }
 
-func (d *StatefulSetDiagnoser) Diagnose(printer *pritty.Printer) error {
+func (d *StatefulSetChecker) Check(printer *pritty.Printer) error {
 	sts, err := getStatefulSet(d.Clientset, d.Target)
 	if err != nil {
 		return err

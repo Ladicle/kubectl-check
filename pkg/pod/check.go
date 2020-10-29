@@ -8,10 +8,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubectl/pkg/scheme"
 
-	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
-	condutil "github.com/Ladicle/kubectl-diagnose/pkg/util/cond"
-	eventutil "github.com/Ladicle/kubectl-diagnose/pkg/util/event"
-	"github.com/Ladicle/kubectl-diagnose/pkg/util/formatter"
+	"github.com/Ladicle/kubectl-check/pkg/pritty"
+	condutil "github.com/Ladicle/kubectl-check/pkg/util/cond"
+	eventutil "github.com/Ladicle/kubectl-check/pkg/util/event"
+	"github.com/Ladicle/kubectl-check/pkg/util/formatter"
 )
 
 func ReportPodsDetail(c *kubernetes.Clientset, printer *pritty.Printer, pods []corev1.Pod) error {

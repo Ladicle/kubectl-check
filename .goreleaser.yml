@@ -6,8 +6,8 @@ builds:
   - CGO_ENABLED=0
   ldflags:
   - -w
-  - -X github.com/Ladicle/kubectl-diagnose/cmd.version={{.Version}}
-  - -X github.com/Ladicle/kubectl-diagnose/cmd.commit={{.ShortCommit}}
+  - -X github.com/Ladicle/kubectl-check/cmd.version={{.Version}}
+  - -X github.com/Ladicle/kubectl-check/cmd.commit={{.ShortCommit}}
   goos:
   - linux
   - windows
@@ -17,7 +17,7 @@ builds:
   - arm64
 archives:
 - builds:
-  - kubectl-diagnose
+  - kubectl-check
   name_template: "{{ .ProjectName }}_{{ .Os }}-{{ .Arch }}"
   format: tar.gz
   files:
@@ -28,10 +28,10 @@ checksum:
 changelog:
   sort: asc
 brews:
-- name: kubectl-diagnose
+- name: kubectl-check
   tap:
     owner: Ladicle
     name: homebrew-brew
     token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-  description: "Diagnose Kubernetes resource"
-  homepage: "https://github.com/Ladicle/kubectl-diagnose"
+  description: "Check Kubernetes resource"
+  homepage: "https://github.com/Ladicle/kubectl-check"

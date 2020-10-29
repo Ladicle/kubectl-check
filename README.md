@@ -1,29 +1,29 @@
-# kubectl-diagnose
+# kubectl-check
 
-`kubectl-diagnose` is a kubectl plugin that diagnoses Kubernetes resources. 
+`kubectl-check` is a kubectl plugin that checks Kubernetes resources. 
 Currently it supports deployment, daemonset and statefulset.
 
 ## Installation
 
 ```bash
-$ brew install Ladicle/brew/kubectl-diagnose
+$ brew install Ladicle/brew/kubectl-check
 ```
 
 ## Usage
 
 ```bash
-$ kubectl diagnose
-Diagnose Kubernetes resource status
+$ kubectl check
+Check Kubernetes resource status
 
 Usage:
-  diagnose
-  diagnose [command]
+  check
+  check [command]
 
 Available Commands:
-  daemonset   Diagnose DaemonSet resource
-  deployment  Diagnose Deployment resource
+  daemonset   Check DaemonSet resource
+  deployment  Check Deployment resource
   help        Help about any command
-  statefulset Diagnose StatefulSet resource
+  statefulset Check StatefulSet resource
 ...
 ```
 
@@ -33,7 +33,7 @@ Available Commands:
 $ kubectl create deployment hello --image=not/found
 deployment.apps/hello created
 
-$ kubectl diagnose deploy hello
+$ kubectl check deploy hello
 Deployment "default/hello" is not available (0/1):
 
 [ErrImagePull] Pod/hello-7d8df5b78-5zj6x/Container{found}: rpc error: code = Unknown desc = Error response from daemon: pull access denied for not/found, repository does not exist or may require 'docker login': denied: requested access to the resource is denied (restarted x0)

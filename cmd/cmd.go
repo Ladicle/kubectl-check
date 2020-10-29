@@ -15,8 +15,8 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/term"
 
-	"github.com/Ladicle/kubectl-diagnose/pkg/diagnoser"
-	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
+	"github.com/Ladicle/kubectl-check/pkg/checker"
+	"github.com/Ladicle/kubectl-check/pkg/pritty"
 )
 
 var (
@@ -25,12 +25,12 @@ var (
 	commit  string
 )
 
-func NewDiagnoseCmd() *cobra.Command {
+func NewCheckCmd() *cobra.Command {
 	cmds := &cobra.Command{
-		Use:                   "diagnose",
+		Use:                   "check",
 		Version:               fmt.Sprintf("%v @%v", version, commit),
 		DisableFlagsInUseLine: true,
-		Short:                 "Diagnose Kubernetes resource status",
+		Short:                 "Check Kubernetes resource status",
 		Run:                   cmdutil.DefaultSubCommandRun(os.Stderr),
 	}
 
@@ -60,8 +60,8 @@ type CmdOptions struct {
 	Resource string
 	Name     string
 
-	diagnoser         diagnoser.Diagnoser
-	createDiagnoserFn func(opts *diagnoser.Options) diagnoser.Diagnoser
+	checker         checker.Checker
+	createCheckerFn func(opts *checker.Options) checker.Checker
 }
 
 func (o *CmdOptions) Validate(args []string) error {
@@ -86,11 +86,11 @@ func (o *CmdOptions) Complete(f cmdutil.Factory) error {
 	}
 
 	target := types.NamespacedName{Name: o.Name, Namespace: ns}
-	opts := diagnoser.NewOptions(target, c)
-	o.diagnoser = o.createDiagnoserFn(opts)
+	opts := checker.NewOptions(target, c)
+	o.checker = o.createCheckerFn(opts)
 	return nil
 }
 
 func (o *CmdOptions) Run(printer *pritty.Printer) error {
-	return o.diagnoser.Diagnose(printer)
+	return o.checker.Check(printer)
 }

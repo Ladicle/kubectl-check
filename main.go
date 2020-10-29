@@ -6,7 +6,7 @@ import (
 
 	"k8s.io/kubectl/pkg/util/logs"
 
-	"github.com/Ladicle/kubectl-diagnose/cmd"
+	"github.com/Ladicle/kubectl-check/cmd"
 )
 
 func init() {
@@ -18,7 +18,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	c := cmd.NewDiagnoseCmd()
+	c := cmd.NewCheckCmd()
 	if err := c.Execute(); err != nil {
 		os.Exit(1)
 	}

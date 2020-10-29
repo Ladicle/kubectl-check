@@ -1,4 +1,4 @@
-PKGROOT=github.com/Ladicle/kubectl-diagnose
+PKGROOT=github.com/Ladicle/kubectl-check
 OUTDIR=dist
 
 .PHONY: build check clean

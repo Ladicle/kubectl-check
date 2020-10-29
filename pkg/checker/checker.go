@@ -1,13 +1,13 @@
-package diagnoser
+package checker
 
 import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
+	"github.com/Ladicle/kubectl-check/pkg/pritty"
 )
 
-// NewOptions creates Diagnoser resource.
+// NewOptions creates Checkr resource.
 func NewOptions(target types.NamespacedName, clientset *kubernetes.Clientset) *Options {
 	d := &Options{
 		Target:    target,
@@ -16,13 +16,13 @@ func NewOptions(target types.NamespacedName, clientset *kubernetes.Clientset) *O
 	return d
 }
 
-// Options diagnoses a target resource.
+// Options checks a target resource.
 type Options struct {
 	Target types.NamespacedName
 
 	*kubernetes.Clientset
 }
 
-type Diagnoser interface {
-	Diagnose(printer *pritty.Printer) error
+type Checker interface {
+	Check(printer *pritty.Printer) error
 }

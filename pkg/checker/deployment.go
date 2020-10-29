@@ -1,4 +1,4 @@
-package diagnoser
+package checker
 
 import (
 	"context"
@@ -12,22 +12,22 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/Ladicle/kubectl-diagnose/pkg/pod"
-	"github.com/Ladicle/kubectl-diagnose/pkg/pritty"
-	condutil "github.com/Ladicle/kubectl-diagnose/pkg/util/cond"
+	"github.com/Ladicle/kubectl-check/pkg/pod"
+	"github.com/Ladicle/kubectl-check/pkg/pritty"
+	condutil "github.com/Ladicle/kubectl-check/pkg/util/cond"
 )
 
-// NewDeploymentDiagnoser creates Deployment Diagnoser resource.
-func NewDeploymentDiagnoser(opts *Options) Diagnoser {
-	return &DeploymentDiagnoser{Options: opts}
+// NewDeploymentChecker creates Deployment Checkr resource.
+func NewDeploymentChecker(opts *Options) Checker {
+	return &DeploymentChecker{Options: opts}
 }
 
-// DeploymentDiagnoser diagnoses a target deployment resource.
-type DeploymentDiagnoser struct {
+// DeploymentChecker checks a target deployment resource.
+type DeploymentChecker struct {
 	*Options
 }
 
-func (d DeploymentDiagnoser) Diagnose(printer *pritty.Printer) error {
+func (d DeploymentChecker) Check(printer *pritty.Printer) error {
 	deploy, err := getDeployment(d.Clientset, d.Target)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func getDeployment(c *kubernetes.Clientset, nn types.NamespacedName) (*appsv1.De
 		context.Background(), nn.Name, metav1.GetOptions{})
 }
 
-func (d *DeploymentDiagnoser) checkDeploymentAvailable(deploy *appsv1.Deployment) (bool, error) {
+func (d *DeploymentChecker) checkDeploymentAvailable(deploy *appsv1.Deployment) (bool, error) {
 	for _, cond := range deploy.Status.Conditions {
 		if cond.Type == appsv1.DeploymentAvailable {
 			return condutil.IsStatusTrue(cond.Status), nil
