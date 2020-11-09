@@ -25,14 +25,14 @@ var usageTemplate = `%v:{{if .Runnable}}
   -R, --color  Enable color output even if stdout is not a terminal{{else}}
 {{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}
 
-Use "{{.CommandPath}} --options" for full information about global flags.{{if .HasAvailableSubCommands}}
-Use "{{.CommandPath}} <resource> --help" for more information about each resource.{{end}}
+Use "kubectl {{.CommandPath}} --options" for full information about global flags.{{if .HasAvailableSubCommands}}
+Use "kubectl {{.CommandPath}} <resource> --help" for more information about each resource.{{end}}
 `
 
 func getUsageTemplate(p *pritty.Printer) string {
 	return fmt.Sprintf(usageTemplate,
 		p.SprintHeader("Usage"),
-		p.SprintHeader("Resource"),
+		p.SprintHeader("Resources"),
 		p.SprintHeader("Aliases"),
 		p.SprintHeader("Example"),
 		p.SprintHeader("Flags"),

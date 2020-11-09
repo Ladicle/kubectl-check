@@ -16,12 +16,12 @@ $ kubectl check -h
 Check Kubernetes resource status
 
 Usage:
-  check [flags...] <resource> <name>
+  kubectl check [flags...] <resource> <name>
 
 Resources:
   - daemonset, ds
   - deployment, deploy, dp
-  - statefulset, ststig
+  - statefulset, sts
 
 Flags:
   --version    Version for check
@@ -29,8 +29,8 @@ Flags:
   -h, --help   Show this message
   -R, --color  Enable color output even if stdout is not a terminal
 
-Use "check --options" for full information about global flags.
-Use "check [resource] --help" for more information about each resource.
+Use "kubectl check --options" for full information about global flags.
+Use "kubectl check <resource> --help" for more information about each resource.
 ```
 
 ## Getting Started
