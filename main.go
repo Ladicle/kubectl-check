@@ -1,22 +1,16 @@
 package main
 
 import (
-	"flag"
 	"os"
 
-	"k8s.io/kubectl/pkg/util/logs"
+	"k8s.io/klog/v2"
 
 	"github.com/Ladicle/kubectl-check/cmd"
 )
 
-func init() {
-	flag.Set("logtostderr", "false")
-	flag.Set("log_file", "/dev/null")
-}
-
 func main() {
-	logs.InitLogs()
-	defer logs.FlushLogs()
+	klog.InitFlags(nil)
+	defer klog.Flush()
 
 	c := cmd.NewCheckCmd()
 	if err := c.Execute(); err != nil {
