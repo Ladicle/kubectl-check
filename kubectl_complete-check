@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# Kubectl plugin completion script for kubectl-check
+# This script is called by kubectl when performing shell completion for the check plugin.
+# Requires kubectl v1.26 or higher.
+
+# If we are completing a flag, use Cobra's builtin completion system.
+# To know if we are completing a flag we need the last argument to start with a `-` and not contain an `=`
+args=("$@")
+lastArg=${args[((${#args[@]}-1))]}
+if [[ "$lastArg" == -* ]]; then
+   if [[ "$lastArg" != *=* ]]; then
+      kubectl-check __complete "$@"
+      exit
+   fi
+fi
+
+# For non-flag arguments, use Cobra's completion
+kubectl-check __complete "$@"

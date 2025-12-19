@@ -1,0 +1,43 @@
+version: 2
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -w
+      - -X github.com/Ladicle/kubectl-check/cmd.version={{.Version}}
+      - -X github.com/Ladicle/kubectl-check/cmd.commit={{.ShortCommit}}
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Os }}-{{ .Arch }}"
+    formats: [tar.gz]
+    files:
+      - LICENSE
+    wrap_in_directory: true
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+checksum:
+  name_template: 'checksums.txt'
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+homebrew_casks:
+  - repository:
+      owner: Ladicle
+      name: homebrew-brew
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    description: "Check Kubernetes resource"
+    homepage: "https://github.com/Ladicle/kubectl-check"

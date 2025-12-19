@@ -2,39 +2,44 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
+	"github.com/Ladicle/kubectl-check/pkg/checker"
 	"github.com/Ladicle/kubectl-check/pkg/pritty"
 )
 
-var usageTemplate = `%v:{{if .Runnable}}
-  kubectl {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+func getUsageTemplate(p *pritty.Printer) string {
+	// Build resource list from checker.Resources
+	var resources []string
+	for _, info := range checker.Resources {
+		resources = append(resources, fmt.Sprintf("  - %s", strings.Join(info.Aliases, ", ")))
+	}
+	sort.Strings(resources)
 
-%v:{{range .Commands}}{{if .IsAvailableCommand}}
-  - {{.NameAndAliases}}{{end}}{{end}}{{end}}{{if not .HasAvailableSubCommands}}
+	usageTemplate := `%v:
+  kubectl {{.UseLine}}
 
 %v:
-  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+%v
 
 %v:
-{{.Example}}{{end}}
-
-%v:{{if .HasAvailableSubCommands}}
   --version    Version for check
   --options    Show full options of this command
   -h, --help   Show this message
-  -R, --color  Enable color output even if stdout is not a terminal{{else}}
-{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}
+  -R, --color  Enable color output even if stdout is not a terminal
 
-Use "kubectl {{.CommandPath}} --options" for full information about global flags.{{if .HasAvailableSubCommands}}
-Use "kubectl {{.CommandPath}} <resource> --help" for more information about each resource.{{end}}
+%v:
+  completion   Generate shell completion scripts
+
+Use "kubectl {{.CommandPath}} --options" for full information about global flags.
 `
 
-func getUsageTemplate(p *pritty.Printer) string {
 	return fmt.Sprintf(usageTemplate,
 		p.SprintHeader("Usage"),
 		p.SprintHeader("Resources"),
-		p.SprintHeader("Aliases"),
-		p.SprintHeader("Example"),
+		strings.Join(resources, "\n"),
 		p.SprintHeader("Flags"),
+		p.SprintHeader("Available Commands"),
 	)
 }

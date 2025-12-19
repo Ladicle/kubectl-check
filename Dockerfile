@@ -1,3 +1,3 @@
-FROM gcr.io/distroless/static-debian10@sha256:8dd1e64607f5037ccde630b7b20bb053c7cc1c8cc7e09c59a3f5a98956b67ed4
+FROM gcr.io/distroless/static-debian10@sha256:73c9f3f9ee72a6070499e46826dacfda8cb428cb97bef9a70ee6f67957ec99c6
 COPY kubectl-check /opt/bin/
 ENTRYPOINT ["/opt/bin/kubectl-check"]

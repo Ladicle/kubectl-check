@@ -4,92 +4,76 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
-
-	"github.com/Ladicle/kubectl-check/pkg/pod"
-	"github.com/Ladicle/kubectl-check/pkg/pritty"
-	condutil "github.com/Ladicle/kubectl-check/pkg/util/cond"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 )
 
-// NewDeploymentChecker creates Deployment Checkr resource.
-func NewDeploymentChecker(opts *Options) Checker {
-	return &DeploymentChecker{Options: opts}
-}
-
-// DeploymentChecker checks a target deployment resource.
-type DeploymentChecker struct {
-	*Options
-}
-
-func (dc DeploymentChecker) Check(printer *pritty.Printer) error {
-	deploy, err := dc.getTarget()
-	if err != nil {
-		return err
+func listDeploymentChild(deploy *appsv1.Deployment, dc dynamic.Interface) (*unstructured.Unstructured, error) {
+	// List ReplicaSets using dynamic client
+	rsInfo, ok := Resources["ReplicaSet"]
+	if !ok {
+		return nil, fmt.Errorf("could not resolve ReplicaSet resource")
 	}
-
-	available, err := dc.checkDeploymentAvailable(deploy)
-	if err != nil {
-		return err
-	}
-	if available {
-		fmt.Fprintf(printer.IOStreams.Out, "%v is available\n", dc.Target)
-		return nil
-	}
-
-	fmt.Fprintf(printer.IOStreams.Out, "Deployment %q is not available (%d/%d):\n\n",
-		dc.Target, deploy.Status.AvailableReplicas, deploy.Status.Replicas)
-	pods, err := dc.getLatestPods(deploy)
-	if err != nil {
-		return err
-	}
-	return pod.ReportPodsDetail(dc.Clientset, printer, pods.Items)
-}
-
-func (dc *DeploymentChecker) getTarget() (*appsv1.Deployment, error) {
-	return dc.Clientset.AppsV1().Deployments(dc.Target.Namespace).Get(
-		context.Background(), dc.Target.Name, metav1.GetOptions{})
-}
-
-func (dc *DeploymentChecker) checkDeploymentAvailable(deploy *appsv1.Deployment) (bool, error) {
-	for _, cond := range deploy.Status.Conditions {
-		if cond.Type == appsv1.DeploymentAvailable {
-			return condutil.IsStatusTrue(cond.Status), nil
-		}
-	}
-	return false, nil
-}
-
-func (dc DeploymentChecker) getLatestPods(deploy *appsv1.Deployment) (*corev1.PodList, error) {
-	rss, err := dc.Clientset.AppsV1().ReplicaSets(deploy.Namespace).List(context.Background(), metav1.ListOptions{
+	rsList, err := dc.Resource(rsInfo.GVR).Namespace(deploy.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: labels.Set(deploy.Spec.Selector.MatchLabels).String(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	if len(rss.Items) == 0 {
+	if len(rsList.Items) == 0 {
 		return nil, errors.New("not found ReplicaSet")
 	}
-	latestRS := &rss.Items[0]
-	for i := range rss.Items[1:] {
-		rs := &rss.Items[i]
-		if latestRS.Status.ObservedGeneration < rs.Status.ObservedGeneration {
+
+	// Find the latest ReplicaSet
+	latestRS := &rsList.Items[0]
+	for i := range rsList.Items[1:] {
+		rs := &rsList.Items[i+1]
+		var latestGen, rsGen int64
+		latestGen, _, _ = unstructured.NestedInt64(latestRS.Object, "status", "observedGeneration")
+		rsGen, _, _ = unstructured.NestedInt64(rs.Object, "status", "observedGeneration")
+		if latestGen < rsGen {
 			latestRS = rs
 		}
 	}
 
-	tplhash, ok := latestRS.ObjectMeta.Labels[appsv1.DefaultDeploymentUniqueLabelKey]
-	if !ok {
-		return nil, errors.New("ReplicaSet does not have pod-template-hash")
+	return latestRS, nil
+}
+
+func checkDeployment(deploy *appsv1.Deployment, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
+	status := &ResourceStatus{
+		Kind:      "Deployment",
+		Name:      deploy.Name,
+		Namespace: deploy.Namespace,
 	}
 
-	opt := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%v=%v",
-			appsv1.DefaultDeploymentUniqueLabelKey,
-			tplhash),
+	// Collect events for this deployment
+	events, err := getResourceEvents(c, deploy.Namespace, "Deployment", deploy.Name)
+	if err == nil {
+		status.Events = events
 	}
-	return dc.Clientset.CoreV1().Pods(deploy.Namespace).List(context.Background(), opt)
+
+	// Collect container images
+	images := []string{}
+	for _, container := range deploy.Spec.Template.Spec.Containers {
+		images = append(images, container.Image)
+	}
+
+	age := formatAge(deploy.CreationTimestamp.Time)
+	podsStatus := fmt.Sprintf("%d Ready / %d Up-to-date / %d Available (of %d desired)",
+		deploy.Status.ReadyReplicas,
+		deploy.Status.UpdatedReplicas,
+		deploy.Status.AvailableReplicas,
+		*deploy.Spec.Replicas)
+
+	status.AddField("Pods Status:", podsStatus)
+	status.AddField("Images:     ", strings.Join(images, ", "))
+	status.AddField("Age:        ", age)
+
+	return status, nil
 }

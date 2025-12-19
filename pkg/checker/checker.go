@@ -1,28 +1,206 @@
 package checker
 
 import (
+	"context"
+	"fmt"
+	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/duration"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/Ladicle/kubectl-check/pkg/pritty"
 )
 
-// NewOptions creates Checkr resource.
-func NewOptions(target types.NamespacedName, clientset *kubernetes.Clientset) *Options {
-	d := &Options{
-		Target:    target,
-		Clientset: clientset,
-	}
-	return d
+// formatAge returns a human-readable age string
+func formatAge(t time.Time) string {
+	return duration.HumanDuration(time.Since(t))
 }
 
-// Options checks a target resource.
-type Options struct {
+// getResourceEvents retrieves events for a specific resource
+func getResourceEvents(c kubernetes.Interface, namespace, kind, name string) ([]Event, error) {
+	eventList, err := c.CoreV1().Events(namespace).List(context.Background(), metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.kind=%s,involvedObject.name=%s", kind, name),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	events := make([]Event, 0, len(eventList.Items))
+	for _, e := range eventList.Items {
+		// Build From field from source
+		from := e.Source.Component
+		if e.Source.Host != "" {
+			from = fmt.Sprintf("%s, %s", e.Source.Component, e.Source.Host)
+		}
+
+		// Build Object field
+		object := fmt.Sprintf("%s/%s", e.InvolvedObject.Kind, e.InvolvedObject.Name)
+		if e.InvolvedObject.FieldPath != "" {
+			object = fmt.Sprintf("%s/%s", object, e.InvolvedObject.FieldPath)
+		}
+
+		events = append(events, Event{
+			Timestamp:    e.LastTimestamp.Time,
+			Type:         e.Type,
+			Reason:       e.Reason,
+			Message:      e.Message,
+			ResourceKind: kind,
+			ResourceName: name,
+			From:         from,
+			Object:       object,
+		})
+	}
+	return events, nil
+}
+
+// Config holds configuration for checking a target resource.
+type Config struct {
 	Target types.NamespacedName
 
-	*kubernetes.Clientset
+	Clientset     kubernetes.Interface
+	DynamicClient dynamic.Interface
 }
 
-type Checker interface {
-	Check(printer *pritty.Printer) error
+// Checker checks resources using a hierarchical approach
+type Checker struct {
+	*Config
+	Kind string
+}
+
+// NewChecker creates a new Checker
+func NewChecker(cfg *Config, kind string) *Checker {
+	return &Checker{
+		Config: cfg,
+		Kind:   kind,
+	}
+}
+
+// unstructuredToTyped converts unstructured to typed object
+func unstructuredToTyped(obj *unstructured.Unstructured, target interface{}) error {
+	return runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, target)
+}
+
+// ListPods lists pods using label selector and returns as unstructured object
+func ListPods(dc dynamic.Interface, namespace, labelSelector string) (*unstructured.Unstructured, error) {
+	podInfo, ok := Resources["Pod"]
+	if !ok {
+		return nil, fmt.Errorf("could not resolve Pod resource")
+	}
+	podList, err := dc.Resource(podInfo.GVR).Namespace(namespace).List(
+		context.Background(),
+		metav1.ListOptions{LabelSelector: labelSelector},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &unstructured.Unstructured{Object: podList.UnstructuredContent()}, nil
+}
+
+func (c *Checker) Check(printer *pritty.Printer) error {
+	resInfo, ok := Resources[c.Kind]
+	if !ok {
+		return fmt.Errorf("unsupported resource kind: %s", c.Kind)
+	}
+
+	// Get the resource using dynamic client
+	unstructuredObj, err := c.DynamicClient.Resource(resInfo.GVR).Namespace(c.Target.Namespace).Get(
+		context.Background(), c.Target.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	// Check the resource recursively and collect status
+	status, err := c.checkResource(unstructuredObj, resInfo)
+	if err != nil {
+		return err
+	}
+
+	// Render the status tree
+	status.Render(printer, 0)
+
+	// Collect and render all events in hierarchical order
+	allEvents := status.CollectAllEvents()
+	RenderEvents(printer, allEvents)
+
+	// Output logs for failed containers
+	failedContainers := status.CollectAllFailedContainers()
+	if len(failedContainers) > 0 {
+		_, _ = fmt.Fprintln(printer.IOStreams.Out, "\nFailed Container Logs:")
+		for _, fc := range failedContainers {
+			c.printContainerLogs(printer, fc)
+		}
+	}
+
+	return nil
+}
+
+func (c *Checker) checkResource(obj *unstructured.Unstructured, resInfo ResourceInfo) (*ResourceStatus, error) {
+	// Check the resource and get its status
+	status, err := resInfo.CheckFunc(obj, c.Clientset, c.DynamicClient)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check children if ListChild is defined
+	if resInfo.ListChild != nil {
+		childObj, err := resInfo.ListChild(obj, c.DynamicClient)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list children: %w", err)
+		}
+		if childObj != nil {
+			var children []unstructured.Unstructured
+			if childObj.IsList() {
+				list, err := childObj.ToList()
+				if err != nil {
+					return nil, fmt.Errorf("failed to convert to list: %w", err)
+				}
+				children = list.Items
+			} else {
+				children = []unstructured.Unstructured{*childObj}
+			}
+
+			if len(children) > 0 {
+				childKind := children[0].GetKind()
+				childInfo, ok := Resources[childKind]
+				if !ok {
+					return nil, fmt.Errorf("unsupported child kind: %s", childKind)
+				}
+				for i := range children {
+					// Recursively check each child
+					childStatus, err := c.checkResource(&children[i], childInfo)
+					if err != nil {
+						return nil, err
+					}
+					status.AddChild(childStatus)
+				}
+			}
+		}
+	}
+
+	return status, nil
+}
+
+// printContainerLogs prints logs for a failed container
+func (c *Checker) printContainerLogs(printer *pritty.Printer, fc FailedContainer) {
+	_, _ = fmt.Fprintf(printer.IOStreams.Out, "\n--- Pod: %s, Container: %s ---\n", fc.PodName, fc.ContainerName)
+
+	tailLines := int64(20)
+	req := c.Clientset.CoreV1().Pods(fc.Namespace).GetLogs(fc.PodName, &corev1.PodLogOptions{
+		Container: fc.ContainerName,
+		TailLines: &tailLines,
+	})
+
+	logs, err := req.DoRaw(context.Background())
+	if err != nil {
+		_, _ = fmt.Fprintf(printer.IOStreams.Out, "Error retrieving logs: %v\n", err)
+		return
+	}
+
+	_, _ = fmt.Fprintf(printer.IOStreams.Out, "%s\n", string(logs))
 }
