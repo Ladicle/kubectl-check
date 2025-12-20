@@ -1,17 +1,39 @@
-name: "Test go packages"
-on: [pull_request, push]
-env:
-  GO: 1.14.x
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
 jobs:
-  kind:
+  test:
     runs-on: ubuntu-latest
+    
     steps:
-    - name: Checkout
-      uses: actions/checkout@main
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
     - name: Setup Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v5
       with:
-        go-version: ${{ env.GO }}
-    - name: Run test.sh
-      run: |
-        make check
+        go-version-file: 'go.mod'
+    
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Run tests
+      run: make check
+
