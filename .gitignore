@@ -2,3 +2,4 @@ vendor/*
 dist/*
 # Added by goreleaser init:
 dist/
+kubectl-check
