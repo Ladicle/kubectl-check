@@ -3,6 +3,7 @@ package checker
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +21,24 @@ import (
 // formatAge returns a human-readable age string
 func formatAge(t time.Time) string {
 	return duration.HumanDuration(time.Since(t))
+}
+
+// formatTimestampWithAge returns a timestamp with timezone and relative age
+// Example: "2025-12-20 10:30:45 JST (11s ago)"
+func formatTimestampWithAge(t time.Time) string {
+	// Format: "2006-01-02 15:04:05 MST"
+	timestamp := t.Local().Format("2006-01-02 15:04:05 MST")
+	age := duration.HumanDuration(time.Since(t))
+	return fmt.Sprintf("%s (%s ago)", timestamp, age)
+}
+
+// formatBool returns a title case string for boolean values
+// Example: true -> "True", false -> "False"
+func formatBool(b bool) string {
+	if b {
+		return "True"
+	}
+	return "False"
 }
 
 // getResourceEvents retrieves events for a specific resource
@@ -65,6 +84,10 @@ type Config struct {
 
 	Clientset     kubernetes.Interface
 	DynamicClient dynamic.Interface
+
+	// Log display options
+	ShowAllLogs  bool  // Show logs for all containers, not just failed ones
+	LogTailLines int64 // Number of log lines to display
 }
 
 // Checker checks resources using a hierarchical approach
@@ -128,11 +151,22 @@ func (c *Checker) Check(printer *pritty.Printer) error {
 	allEvents := status.CollectAllEvents()
 	RenderEvents(printer, allEvents)
 
-	// Output logs for failed containers
-	failedContainers := status.CollectAllFailedContainers()
-	if len(failedContainers) > 0 {
-		_, _ = fmt.Fprintln(printer.IOStreams.Out, "\nFailed Container Logs:")
-		for _, fc := range failedContainers {
+	// Output logs for containers
+	var containersForLogs []FailedContainer
+	if c.ShowAllLogs {
+		containersForLogs = status.CollectAllContainersFromPods()
+	} else {
+		containersForLogs = status.CollectAllFailedContainers()
+	}
+
+	if len(containersForLogs) > 0 {
+		header := "Failed Container Logs:"
+		if c.ShowAllLogs {
+			header = "Container Logs:"
+		}
+		coloredHeader := pritty.Style(header).Fg(pritty.Cyan).Decorate(pritty.Bold).String()
+		_, _ = fmt.Fprint(printer.IOStreams.Out, "\n"+coloredHeader)
+		for _, fc := range containersForLogs {
 			c.printContainerLogs(printer, fc)
 		}
 	}
@@ -186,11 +220,18 @@ func (c *Checker) checkResource(obj *unstructured.Unstructured, resInfo Resource
 	return status, nil
 }
 
-// printContainerLogs prints logs for a failed container
+// printContainerLogs prints logs for a container
 func (c *Checker) printContainerLogs(printer *pritty.Printer, fc FailedContainer) {
-	_, _ = fmt.Fprintf(printer.IOStreams.Out, "\n--- Pod: %s, Container: %s ---\n", fc.PodName, fc.ContainerName)
+	header := fmt.Sprintf("Pod/%s/%s", fc.PodName, fc.ContainerName)
+	coloredHeader := pritty.Style(header).Decorate(pritty.Bold).String()
+	separator := pritty.Style(strings.Repeat("-", 80)).Decorate(pritty.Bold).String()
+	_, _ = fmt.Fprintf(printer.IOStreams.Out, "\n%s\n", coloredHeader)
+	_, _ = fmt.Fprintf(printer.IOStreams.Out, "%s\n", separator)
 
-	tailLines := int64(20)
+	tailLines := c.LogTailLines
+	if tailLines <= 0 {
+		tailLines = 100 // default
+	}
 	req := c.Clientset.CoreV1().Pods(fc.Namespace).GetLogs(fc.PodName, &corev1.PodLogOptions{
 		Container: fc.ContainerName,
 		TailLines: &tailLines,

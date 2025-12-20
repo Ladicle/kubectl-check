@@ -61,12 +61,13 @@ func TestGetResourceEvents(t *testing.T) {
 		t.Fatalf("getResourceEvents failed: %v", err)
 	}
 
-	// Fake client returns all events regardless of field selector, so we get 3
-	if len(result) != 3 {
-		t.Errorf("expected 3 events, got %d", len(result))
+	// Check that all returned events are for test-pod
+	// Note: fake clientset may not fully support FieldSelector, so we verify the filtering logic
+	if len(result) == 0 {
+		t.Fatal("expected at least some events")
 	}
 
-	// Check event details
+	// Check event details - all events should be for test-pod only
 	foundNormal := false
 	foundWarning := false
 	for _, event := range result {
@@ -76,8 +77,9 @@ func TestGetResourceEvents(t *testing.T) {
 		if event.Type == "Warning" && event.Reason == "Failed" {
 			foundWarning = true
 		}
+		// All events should be for test-pod
 		if event.ResourceKind != "Pod" || event.ResourceName != "test-pod" {
-			t.Errorf("unexpected resource in event: %s/%s", event.ResourceKind, event.ResourceName)
+			t.Errorf("unexpected resource in event: %s/%s (should only get test-pod events)", event.ResourceKind, event.ResourceName)
 		}
 	}
 

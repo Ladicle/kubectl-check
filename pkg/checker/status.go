@@ -17,6 +17,7 @@ type ResourceStatus struct {
 	Children         []*ResourceStatus
 	Events           []Event
 	FailedContainers []FailedContainer
+	AllContainers    []FailedContainer // All containers, for use with --show-all-logs
 }
 
 // StatusField represents a key-value pair for status display
@@ -79,21 +80,37 @@ func (rs *ResourceStatus) CollectAllFailedContainers() []FailedContainer {
 	return allFailed
 }
 
+// CollectAllContainersFromPods recursively collects all containers from Pod resources
+func (rs *ResourceStatus) CollectAllContainersFromPods() []FailedContainer {
+	var containers []FailedContainer
+
+	// Collect all containers from this status
+	containers = append(containers, rs.AllContainers...)
+
+	// Recursively collect from children
+	for _, child := range rs.Children {
+		containers = append(containers, child.CollectAllContainersFromPods()...)
+	}
+
+	return containers
+}
+
 // Render renders the resource status hierarchically
 func (rs *ResourceStatus) Render(printer *pritty.Printer, indent int) {
 	prefix := strings.Repeat(" ", indent)
-	resourceHeader := fmt.Sprintf("%s/%s", rs.Kind, rs.Name)
-	coloredHeader := pritty.Style(resourceHeader).Fg(pritty.Cyan).Decorate(pritty.Bold).String()
 
-	// Print resource header
+	// Build resource header
+	var resourceHeader string
 	if rs.Namespace != "" && indent == 0 {
-		// Top-level resource with namespace
-		_, _ = fmt.Fprintf(printer.IOStreams.Out, "%s%s\n", prefix, coloredHeader)
-		_, _ = fmt.Fprintf(printer.IOStreams.Out, "%s  Namespace:   %s\n", prefix, rs.Namespace)
+		// Top-level resource with namespace: Kind/Namespace/Name
+		resourceHeader = fmt.Sprintf("%s/%s/%s", rs.Kind, rs.Namespace, rs.Name)
 	} else {
-		// Child resource or resource without namespace
-		_, _ = fmt.Fprintf(printer.IOStreams.Out, "%s%s\n", prefix, coloredHeader)
+		// Child resource or resource without namespace: Kind/Name
+		resourceHeader = fmt.Sprintf("%s/%s", rs.Kind, rs.Name)
 	}
+
+	coloredHeader := pritty.Style(resourceHeader).Fg(pritty.Cyan).Decorate(pritty.Bold).String()
+	_, _ = fmt.Fprintf(printer.IOStreams.Out, "%s%s\n", prefix, coloredHeader)
 
 	// Print fields
 	for _, field := range rs.Fields {

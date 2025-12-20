@@ -50,6 +50,18 @@ func init() {
 			CheckFunc: makeCheckFunc(checkPod),
 			ListChild: nil,
 		},
+		"Job": {
+			GVR:       schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "jobs"},
+			Aliases:   []string{"jobs", "job"},
+			CheckFunc: makeCheckFunc(checkJob),
+			ListChild: makeListChildFunc(listJobChild),
+		},
+		"CronJob": {
+			GVR:       schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "cronjobs"},
+			Aliases:   []string{"cronjobs", "cronjob", "cj"},
+			CheckFunc: makeCheckFunc(checkCronJob),
+			ListChild: makeListChildFunc(listCronJobChild),
+		},
 	}
 }
 

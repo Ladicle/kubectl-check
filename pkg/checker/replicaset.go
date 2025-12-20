@@ -21,8 +21,9 @@ func listReplicaSetChild(rs *appsv1.ReplicaSet, dc dynamic.Interface) (*unstruct
 
 func checkReplicaSet(rs *appsv1.ReplicaSet, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
 	status := &ResourceStatus{
-		Kind: "ReplicaSet",
-		Name: rs.Name,
+		Kind:      "ReplicaSet",
+		Name:      rs.Name,
+		Namespace: rs.Namespace,
 	}
 
 	// Collect events for this ReplicaSet
