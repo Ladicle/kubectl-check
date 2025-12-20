@@ -1,7 +1,6 @@
 # kubectl-check
 
-`kubectl-check` is a kubectl plugin that checks Kubernetes resources. 
-Currently it supports deployment, daemonset, statefulset, replicaset, and pod.
+`kubectl-check` is a kubectl plugin that checks Kubernetes resources. It provides a concise summary of the resource status, including pod statuses, container images, age, and recent events.
 
 ## Installation
 
@@ -19,8 +18,10 @@ Usage:
   kubectl check [flags...] <resource> <name>
 
 Resources:
+  - cronjobs, cronjob, cj
   - daemonsets, daemonset, ds
   - deployments, deployment, deploy
+  - jobs, job
   - pods, pod, po
   - replicasets, replicaset, rs
   - statefulsets, statefulset, sts
@@ -76,6 +77,9 @@ source <(kubectl-check completion zsh)
 
 # For bash
 source <(kubectl-check completion bash)
+
+# For fish
+kubectl-check completion fish | source
 ```
 
 ## Getting Started
