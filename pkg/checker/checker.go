@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	"github.com/Ladicle/kubectl-check/pkg/pritty"
 )
@@ -84,10 +85,14 @@ type Config struct {
 
 	Clientset     kubernetes.Interface
 	DynamicClient dynamic.Interface
+	RESTConfig    *rest.Config
 
 	// Log display options
 	ShowAllLogs  bool  // Show logs for all containers, not just failed ones
 	LogTailLines int64 // Number of log lines to display
+
+	// Owner reference checking
+	CheckOwner bool // Recursively check and display owner resources
 }
 
 // Checker checks resources using a hierarchical approach
@@ -138,25 +143,34 @@ func (c *Checker) Check(printer *pritty.Printer) error {
 		return err
 	}
 
-	// Check the resource recursively and collect status
-	status, err := c.checkResource(unstructuredObj, resInfo)
-	if err != nil {
-		return err
+	// Check owner references if CheckOwner is enabled
+	var rootStatus *ResourceStatus
+	if c.CheckOwner {
+		rootStatus, err = c.checkWithOwners(unstructuredObj, resInfo)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Check the resource recursively and collect status
+		rootStatus, err = c.checkResource(unstructuredObj, resInfo)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Render the status tree
-	status.Render(printer, 0)
+	rootStatus.Render(printer, 0)
 
 	// Collect and render all events in hierarchical order
-	allEvents := status.CollectAllEvents()
+	allEvents := rootStatus.CollectAllEvents()
 	RenderEvents(printer, allEvents)
 
 	// Output logs for containers
 	var containersForLogs []FailedContainer
 	if c.ShowAllLogs {
-		containersForLogs = status.CollectAllContainersFromPods()
+		containersForLogs = rootStatus.CollectAllContainersFromPods()
 	} else {
-		containersForLogs = status.CollectAllFailedContainers()
+		containersForLogs = rootStatus.CollectAllFailedContainers()
 	}
 
 	if len(containersForLogs) > 0 {
@@ -179,6 +193,29 @@ func (c *Checker) checkResource(obj *unstructured.Unstructured, resInfo Resource
 	status, err := resInfo.CheckFunc(obj, c.Clientset, c.DynamicClient)
 	if err != nil {
 		return nil, err
+	}
+
+	// Special handling for Workload with _childPods field
+	if obj.GetKind() == "Workload" {
+		if childPods, found, _ := unstructured.NestedSlice(obj.Object, "_childPods"); found && len(childPods) > 0 {
+			// Process child pods
+			podInfo, ok := Resources["Pod"]
+			if ok {
+				for _, podObj := range childPods {
+					podMap, ok := podObj.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					podUnstructured := &unstructured.Unstructured{Object: podMap}
+					childStatus, err := c.checkResource(podUnstructured, podInfo)
+					if err != nil {
+						return nil, err
+					}
+					status.AddChild(childStatus)
+				}
+			}
+			return status, nil
+		}
 	}
 
 	// Check children if ListChild is defined
