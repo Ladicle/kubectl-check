@@ -13,7 +13,13 @@ import (
 
 func listJobChild(job *batchv1.Job, dc dynamic.Interface) (*unstructured.Unstructured, error) {
 	// List Pods using dynamic client
-	return ListPods(dc, job.Namespace, labels.Set(job.Spec.Selector.MatchLabels).String())
+	podList, err := ListPods(dc, job.Namespace, labels.Set(job.Spec.Selector.MatchLabels).String())
+	if err != nil {
+		return nil, err
+	}
+
+	// Group pods by workload if they have kueue annotations
+	return GroupPodsByWorkload(dc, podList, job.Namespace, nil)
 }
 
 func checkJob(job *batchv1.Job, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {

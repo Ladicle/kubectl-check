@@ -11,6 +11,8 @@ This directory contains sample Kubernetes manifests for testing kubectl-check wi
 - **daemonset.yaml** - DaemonSet running on all nodes
 - **job.yaml** - Batch Job with completions and parallelism
 - **cronjob.yaml** - CronJob running every 5 minutes
+- **jobset.yaml** - JobSet with multiple replicated jobs (requires JobSet operator)
+- **kueue-job.yaml** - Job with Kueue workload management
 
 ### Pod Resources
 
@@ -47,6 +49,9 @@ kubectl apply -f samples/deployment.yaml
 # CronJob
 ./kubectl-check cronjob sample-cronjob
 
+# JobSet (if JobSet operator is installed)
+./kubectl-check jobset sample-jobset
+
 # Pod
 ./kubectl-check pod sample-pod
 
@@ -55,6 +60,9 @@ kubectl apply -f samples/deployment.yaml
 
 # Failing Pod (to see failed container logs)
 ./kubectl-check pod failing-pod
+
+# Kueue-managed Job (if Kueue is installed)
+./kubectl-check job sample-kueue-job
 ```
 
 ### Show all logs (not just failed containers):

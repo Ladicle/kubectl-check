@@ -1,0 +1,47 @@
+apiVersion: jobset.x-k8s.io/v1alpha2
+kind: JobSet
+metadata:
+  name: sample-jobset
+  namespace: default
+spec:
+  replicatedJobs:
+  - name: workers
+    replicas: 2
+    template:
+      spec:
+        parallelism: 2
+        completions: 2
+        template:
+          spec:
+            containers:
+            - name: worker
+              image: busybox:latest
+              command: ["sh", "-c", "echo 'Worker processing...'; sleep 10; echo 'Done!'"]
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "256Mi"
+            restartPolicy: Never
+  - name: driver
+    replicas: 1
+    template:
+      spec:
+        parallelism: 1
+        completions: 1
+        template:
+          spec:
+            containers:
+            - name: driver
+              image: busybox:latest
+              command: ["sh", "-c", "echo 'Driver coordinating...'; sleep 15; echo 'Finished!'"]
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "256Mi"
+            restartPolicy: Never

@@ -62,6 +62,23 @@ func init() {
 			CheckFunc: makeCheckFunc(checkCronJob),
 			ListChild: makeListChildFunc(listCronJobChild),
 		},
+		"JobSet": {
+			GVR:     schema.GroupVersionResource{Group: "jobset.x-k8s.io", Version: "v1alpha2", Resource: "jobsets"},
+			Aliases: []string{"jobsets", "jobset", "js"},
+			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
+				return checkJobSet(obj.Object, c, dc)
+			},
+			ListChild: func(obj *unstructured.Unstructured, dc dynamic.Interface) (*unstructured.Unstructured, error) {
+				return listJobSetChild(obj.Object, dc)
+			},
+		},
+		// Workload is not directly checkable but used as intermediate node in hierarchy
+		"Workload": {
+			GVR:       schema.GroupVersionResource{Group: "kueue.x-k8s.io", Version: "v1beta1", Resource: "workloads"},
+			Aliases:   nil, // No aliases - not directly checkable
+			CheckFunc: makeCheckFunc(checkWorkload),
+			ListChild: nil, // Children are provided via _childPods field
+		},
 	}
 }
 

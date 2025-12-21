@@ -16,7 +16,13 @@ func listReplicaSetChild(rs *appsv1.ReplicaSet, dc dynamic.Interface) (*unstruct
 		return nil, errors.New("ReplicaSet does not have pod-template-hash")
 	}
 
-	return ListPods(dc, rs.Namespace, fmt.Sprintf("%s=%s", appsv1.DefaultDeploymentUniqueLabelKey, tplhash))
+	podList, err := ListPods(dc, rs.Namespace, fmt.Sprintf("%s=%s", appsv1.DefaultDeploymentUniqueLabelKey, tplhash))
+	if err != nil {
+		return nil, err
+	}
+
+	// Group pods by workload if they have kueue annotations
+	return GroupPodsByWorkload(dc, podList, rs.Namespace, nil)
 }
 
 func checkReplicaSet(rs *appsv1.ReplicaSet, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {

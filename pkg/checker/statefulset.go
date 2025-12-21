@@ -16,7 +16,13 @@ func listStatefulSetChild(sts *appsv1.StatefulSet, dc dynamic.Interface) (*unstr
 		return nil, errors.New(".status.updateRevision is empty")
 	}
 
-	return ListPods(dc, sts.Namespace, fmt.Sprintf("%s=%s", appsv1.ControllerRevisionHashLabelKey, sts.Status.UpdateRevision))
+	podList, err := ListPods(dc, sts.Namespace, fmt.Sprintf("%s=%s", appsv1.ControllerRevisionHashLabelKey, sts.Status.UpdateRevision))
+	if err != nil {
+		return nil, err
+	}
+
+	// Group pods by workload if they have kueue annotations
+	return GroupPodsByWorkload(dc, podList, sts.Namespace, nil)
 }
 
 func checkStatefulSet(sts *appsv1.StatefulSet, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {

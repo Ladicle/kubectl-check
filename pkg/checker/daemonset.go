@@ -25,7 +25,13 @@ func listDaemonSetChild(ds *appsv1.DaemonSet, dc dynamic.Interface) (*unstructur
 		selector = fmt.Sprintf("pod-template-generation=%d", ds.Status.ObservedGeneration)
 	}
 
-	return ListPods(dc, ds.Namespace, selector)
+	podList, err := ListPods(dc, ds.Namespace, selector)
+	if err != nil {
+		return nil, err
+	}
+
+	// Group pods by workload if they have kueue annotations
+	return GroupPodsByWorkload(dc, podList, ds.Namespace, nil)
 }
 
 func checkDaemonSet(ds *appsv1.DaemonSet, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {

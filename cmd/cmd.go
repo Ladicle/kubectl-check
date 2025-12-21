@@ -34,6 +34,7 @@ func NewCheckCmd() *cobra.Command {
 	var optionsFlag bool
 	var showAllLogs bool
 	var logTailLines int
+	var checkOwner bool
 
 	kubeConfigFlags := genericclioptions.NewConfigFlags(true)
 	matchVersionFlags := cmdutil.NewMatchVersionFlags(kubeConfigFlags)
@@ -98,8 +99,10 @@ func NewCheckCmd() *cobra.Command {
 				Target:        target,
 				Clientset:     c,
 				DynamicClient: dc,
+				RESTConfig:    cfg,
 				ShowAllLogs:   showAllLogs,
 				LogTailLines:  int64(logTailLines),
+				CheckOwner:    checkOwner,
 			}, kind)
 			if err := chk.Check(printer); err != nil {
 				return err
@@ -117,6 +120,7 @@ func NewCheckCmd() *cobra.Command {
 	cmds.PersistentFlags().BoolVarP(&optionsFlag, "options", "", false, "Show full options of this command")
 	cmds.PersistentFlags().BoolVarP(&showAllLogs, "show-all-logs", "L", false, "Show logs for all containers, not just failed ones")
 	cmds.PersistentFlags().IntVarP(&logTailLines, "tail", "t", 20, "Number of lines to show from the end of the logs")
+	cmds.PersistentFlags().BoolVarP(&checkOwner, "check-owner", "O", true, "Recursively check and display owner resources")
 	cmds.SetUsageTemplate(getUsageTemplate(printer))
 
 	// Register namespace flag completion
