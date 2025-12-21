@@ -3,9 +3,37 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: minor
 
 jobs:
+  create-tag:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Bump version and push tag
+      uses: mathieudutour/github-tag-action@v6.2
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        default_bump: ${{ github.event.inputs.bump }}
+        tag_prefix: v
+
   publish-binary:
+    if: always() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && needs.create-tag.result == 'success'))
+    needs: create-tag
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
