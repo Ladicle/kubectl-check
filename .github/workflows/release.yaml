@@ -1,33 +1,31 @@
 name: Release
-
 on:
   push:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-
 jobs:
-  goreleaser:
+  publish-binary:
     runs-on: ubuntu-latest
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: go.mod
-    
+        go-version-file: go.mod
+    - name: Generate GitHub App Token
+      uses: actions/create-github-app-token@v1
+      id: app-token
+      with:
+        app-id: ${{ vars.APP_ID }}
+        private-key: ${{ secrets.PRIVATE_KEY }}
+        repositories: homebrew-tap
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v6
       with:
-        version: latest
+        distribution: goreleaser
         args: release --clean
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        TAP_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
