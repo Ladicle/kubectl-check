@@ -29,6 +29,10 @@ func listJobSetChild(jobset map[string]interface{}, dc dynamic.Interface) (*unst
 	if !ok {
 		return nil, fmt.Errorf("could not resolve Job resource")
 	}
+	serviceInfo, ok := Resources["Service"]
+	if !ok {
+		return nil, fmt.Errorf("could not resolve Service resource")
+	}
 
 	labelSelector := labels.Set{
 		"jobset.sigs.k8s.io/jobset-name": name,
@@ -42,11 +46,33 @@ func listJobSetChild(jobset map[string]interface{}, dc dynamic.Interface) (*unst
 		return nil, err
 	}
 
-	if len(jobList.Items) == 0 {
+	serviceList, err := dc.Resource(serviceInfo.GVR).Namespace(namespace).List(
+		context.Background(),
+		metav1.ListOptions{LabelSelector: labelSelector},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]interface{}, 0, len(jobList.Items)+len(serviceList.Items))
+	for i := range jobList.Items {
+		items = append(items, jobList.Items[i].Object)
+	}
+	for i := range serviceList.Items {
+		items = append(items, serviceList.Items[i].Object)
+	}
+
+	if len(items) == 0 {
 		return nil, nil
 	}
 
-	return &unstructured.Unstructured{Object: jobList.UnstructuredContent()}, nil
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "List",
+			"items":      items,
+		},
+	}, nil
 }
 
 func checkJobSet(jobset map[string]interface{}, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {

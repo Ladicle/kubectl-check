@@ -31,6 +31,7 @@ Resources:
   - deployments, deployment, deploy
   - jobs, job
   - jobsets, jobset, js
+  - services, service, svc
   - pods, pod, po
   - replicasets, replicaset, rs
   - statefulsets, statefulset, sts
