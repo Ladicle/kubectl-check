@@ -28,8 +28,7 @@ dockers:
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses="Apache License 2.0"
 brews:
-  - name: {{ .ProjectName }}
-    repository:
+  - repository:
       owner: Ladicle
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"

@@ -1,11 +1,19 @@
 # kubectl-check
 
-`kubectl-check` is a kubectl plugin that checks Kubernetes resources. It provides a concise summary of the resource status, including pod statuses, container images, age, and recent events.
+`kubectl-check` is a kubectl plugin that performs hierarchical checks of Kubernetes resources. It traverses the resource tree downward (from parent resources to pods, containers, events, and logs) and optionally upward (following owner references to parent resources), providing a comprehensive view of resource status and health.
 
 ## Installation
 
+Homebrew:
+
 ```bash
 $ brew install Ladicle/brew/kubectl-check
+```
+
+Go:
+
+```bash
+$ go install github.com/Ladicle/kubectl-check@latest
 ```
 
 ## Usage
@@ -22,15 +30,20 @@ Resources:
   - daemonsets, daemonset, ds
   - deployments, deployment, deploy
   - jobs, job
+  - jobsets, jobset, js
   - pods, pod, po
   - replicasets, replicaset, rs
   - statefulsets, statefulset, sts
+  - workloads, workload, wl (Kueue)
 
 Flags:
-  --version    Version for check
-  --options    Show full options of this command
-  -h, --help   Show this message
-  -R, --color  Enable color output even if stdout is not a terminal
+  -O, --check-owner        Recursively traverse owner references upward
+      --show-all-logs      Show logs for all containers (not just failed ones)
+      --tail int           Number of log lines to display (default 100)
+      --version            Version for check
+      --options            Show full options of this command
+  -h, --help               Show this message
+  -R, --color              Enable color output even if stdout is not a terminal
 
 Available Commands:
   completion   Generate shell completion scripts
@@ -82,6 +95,58 @@ source <(kubectl-check completion bash)
 kubectl-check completion fish | source
 ```
 
+## Features
+
+### Hierarchical Resource Checking
+
+The plugin checks resources hierarchically, traversing from parent resources down to pods, containers, events, and logs:
+
+```bash
+$ kubectl check deploy hello
+Deployment/hello                    # Parent resource
+  ├─ ReplicaSet/hello-7b6f74959b    # Child resource
+  │   └─ Pod/hello-7b6f74959b-6qmh6 # Grandchild resource
+  │       ├─ Container status
+  │       └─ Events                  # Events for all resources in hierarchy
+  └─ Container Logs                  # Logs from failed containers
+```
+
+### Owner Reference Traversal
+
+Use `--check-owner` (or `-O`) to traverse owner references upward, showing the complete resource hierarchy:
+
+```bash
+$ kubectl check pod my-pod-abc123 --check-owner
+JobSet/training-job                 # Top-level owner
+  └─ Job/training-job-worker-0      # Intermediate owner
+      └─ Pod/my-pod-abc123          # Target resource
+          ├─ Container status
+          └─ Events and logs
+```
+
+### Container Logs
+
+By default, logs from failed containers are displayed. Use flags to customize log output:
+
+```bash
+# Show logs from all containers (not just failed ones)
+$ kubectl check deploy myapp --show-all-logs
+
+# Limit number of log lines
+$ kubectl check pod mypod --tail 50
+```
+
+### Kueue Integration
+
+Automatically detects and displays Kueue Workloads as intermediate nodes when pods have the `kueue.x-k8s.io/workload` annotation:
+
+```bash
+$ kubectl check job batch-job
+Job/batch-job
+  └─ Workload/job-batch-job-12345   # Automatically inserted when annotation present
+      └─ Pod/batch-job-abc123
+```
+
 ## Getting Started
 
 ```bash
@@ -106,14 +171,16 @@ Deployment/hello
       Node:     kind-control-plane
 
 Events:
-  Reason               Age      From    　　     Object                                             Message
-  ------               ----     ----        　　 ------                                             -------
-  ScalingReplicaSet    22m      DeploymentCo... Deployment/hello                                   Scaled up replica set hello-7b6f74959b from 0 to 1
-  SuccessfulCreate     22m      ReplicasetCo... ReplicaSet/hello-7b6f74959b                        Created pod: hello-7b6f74959b-6qmh6
-  Scheduled            22m      DefaultSched... Pod/hello-7b6f74959b-6qmh6                         Successfully assigned default/hello-7b6f74959b-6qmh6 to kind-control-plane
-  Pulling              19m      Kubelet,Kind... Pod/hello-7b6f74959b-6qmh6/spec.containers{found}  Pulling image "not/found"
-  Failed               19m      Kubelet,Kind... Pod/hello-7b6f74959b-6qmh6/spec.containers{found}  Failed to pull image "not/found": failed to pull and unpack image "docker.io/not/found:latest": failed to resolve reference "docker.io/not/found:latest": pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed
-  Failed               19m      Kubelet,Kind... Pod/hello-7b6f74959b-6qmh6/spec.containers{found}  Error: ErrImagePull
-  BackOff              2m40s    Kubelet,Kind... Pod/hello-7b6f74959b-6qmh6/spec.containers{found}  Back-off pulling image "not/found"
-  Failed               2m40s    Kubelet,Kind... Pod/hello-7b6f74959b-6qmh6/spec.containers{found}  Error: ImagePullBackOff
+  Reason               Age      From              Object                                             Message
+  ------               ----     ----              ------                                             -------
+  ScalingReplicaSet    22m      DeploymentCo...   Deployment/hello                                   Scaled up replica set hello-7b6f74959b from 0 to 1
+  SuccessfulCreate     22m      ReplicasetCo...   ReplicaSet/hello-7b6f74959b                        Created pod: hello-7b6f74959b-6qmh6
+  Scheduled            22m      DefaultSched...   Pod/hello-7b6f74959b-6qmh6                         Successfully assigned default/hello-7b6f74959b-6qmh6 to kind-control-plane
+  Pulling              19m      Kubelet,Kind...   Pod/hello-7b6f74959b-6qmh6/spec.containers{found}  Pulling image "not/found"
+  Failed               19m      Kubelet,Kind...   Pod/hello-7b6f74959b-6qmh6/spec.containers{found}  Failed to pull image "not/found": rpc error: code = Unknown desc = failed to pull and unpack image
+
+Failed Container Logs:
+Pod/hello-7b6f74959b-6qmh6/found
+--------------------------------------------------------------------------------
+Error: ImagePullBackOff
 ```
