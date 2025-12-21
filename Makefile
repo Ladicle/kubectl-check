@@ -1,12 +1,12 @@
 PKGROOT=github.com/Ladicle/kubectl-check
 OUTDIR=dist
 
-.PHONY: build check clean
+.PHONY: build test clean
 
 build:
 	goreleaser build --snapshot --clean
 
-check:
+test:
 	go fmt $(PKGROOT)/...
 	go vet $(PKGROOT)/...
 	go test $(PKGROOT)/...
