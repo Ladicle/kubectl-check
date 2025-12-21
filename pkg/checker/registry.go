@@ -85,6 +85,45 @@ func init() {
 			CheckFunc: makeCheckFunc(checkWorkload),
 			ListChild: nil, // Children are provided via _childPods field
 		},
+		// Gateway API resources
+		"Gateway": {
+			GVR:     schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"},
+			Aliases: []string{"gateways", "gateway", "gtw"},
+			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
+				return checkGateway(obj.Object, c, dc)
+			},
+			ListChild: func(obj *unstructured.Unstructured, dc dynamic.Interface) (*unstructured.Unstructured, error) {
+				return listGatewayChild(obj.Object, dc)
+			},
+		},
+		"HTTPRoute": {
+			GVR:     schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"},
+			Aliases: []string{"httproutes", "httproute"},
+			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
+				return checkHTTPRoute(obj.Object, c, dc)
+			},
+			ListChild: func(obj *unstructured.Unstructured, dc dynamic.Interface) (*unstructured.Unstructured, error) {
+				return listHTTPRouteChild(obj.Object, dc)
+			},
+		},
+		"GRPCRoute": {
+			GVR:     schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "grpcroutes"},
+			Aliases: []string{"grpcroutes", "grpcroute"},
+			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
+				return checkGRPCRoute(obj.Object, c, dc)
+			},
+			ListChild: func(obj *unstructured.Unstructured, dc dynamic.Interface) (*unstructured.Unstructured, error) {
+				return listGRPCRouteChild(obj.Object, dc)
+			},
+		},
+		"GatewayClass": {
+			GVR:     schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gatewayclasses"},
+			Aliases: []string{"gatewayclasses", "gatewayclass", "gc"},
+			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
+				return checkGatewayClass(obj.Object, c, dc)
+			},
+			ListChild: nil,
+		},
 	}
 }
 
