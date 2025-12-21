@@ -94,12 +94,6 @@ func checkHTTPRoute(httpRoute map[string]interface{}, c kubernetes.Interface, dc
 		Namespace: namespace,
 	}
 
-	// Collect events for this HTTPRoute
-	events, err := getResourceEvents(c, namespace, "HTTPRoute", name)
-	if err == nil {
-		status.Events = events
-	}
-
 	// Parent references (Gateways)
 	parentRefs, found, _ := unstructured.NestedSlice(httpRoute, "spec", "parentRefs")
 	if found && len(parentRefs) > 0 {

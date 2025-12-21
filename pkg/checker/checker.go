@@ -195,6 +195,14 @@ func (c *Checker) checkResource(obj *unstructured.Unstructured, resInfo Resource
 		return nil, err
 	}
 
+	// Automatically collect events for all resources
+	if len(status.Events) == 0 {
+		events, err := getResourceEvents(c.Clientset, obj.GetNamespace(), obj.GetKind(), obj.GetName())
+		if err == nil {
+			status.Events = events
+		}
+	}
+
 	// Special handling for Workload with _childPods field
 	if obj.GetKind() == "Workload" {
 		if childPods, found, _ := unstructured.NestedSlice(obj.Object, "_childPods"); found && len(childPods) > 0 {

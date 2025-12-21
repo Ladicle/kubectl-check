@@ -18,12 +18,6 @@ func checkPod(p *corev1.Pod, c kubernetes.Interface, dc dynamic.Interface) (*Res
 		Namespace: p.Namespace,
 	}
 
-	// Collect events for this Pod
-	events, err := getResourceEvents(c, p.Namespace, "Pod", p.Name)
-	if err == nil {
-		status.Events = events
-	}
-
 	ready := p.Status.Phase == corev1.PodRunning
 	readyContainers := 0
 	totalContainers := len(p.Spec.Containers)

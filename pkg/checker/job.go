@@ -29,12 +29,6 @@ func checkJob(job *batchv1.Job, c kubernetes.Interface, dc dynamic.Interface) (*
 		Namespace: job.Namespace,
 	}
 
-	// Collect events for this job
-	events, err := getResourceEvents(c, job.Namespace, "Job", job.Name)
-	if err == nil {
-		status.Events = events
-	}
-
 	// Job status
 	completions := "?"
 	if job.Spec.Completions != nil {

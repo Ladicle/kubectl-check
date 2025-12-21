@@ -32,12 +32,6 @@ func checkStatefulSet(sts *appsv1.StatefulSet, c kubernetes.Interface, dc dynami
 		Namespace: sts.Namespace,
 	}
 
-	// Collect events for this StatefulSet
-	events, err := getResourceEvents(c, sts.Namespace, "StatefulSet", sts.Name)
-	if err == nil {
-		status.Events = events
-	}
-
 	// Collect container images
 	images := []string{}
 	for _, container := range sts.Spec.Template.Spec.Containers {

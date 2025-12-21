@@ -30,7 +30,6 @@ Resources:
   - daemonsets, daemonset, ds
   - deployments, deployment, deploy
   - gateways, gateway, gtw (Gateway API)
-  - gatewayclasses, gatewayclass, gc (Gateway API)
   - grpcroutes, grpcroute (Gateway API)
   - httproutes, httproute (Gateway API)
   - jobs, job

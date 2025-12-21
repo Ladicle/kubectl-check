@@ -32,12 +32,6 @@ func checkReplicaSet(rs *appsv1.ReplicaSet, c kubernetes.Interface, dc dynamic.I
 		Namespace: rs.Namespace,
 	}
 
-	// Collect events for this ReplicaSet
-	events, err := getResourceEvents(c, rs.Namespace, "ReplicaSet", rs.Name)
-	if err == nil {
-		status.Events = events
-	}
-
 	age := formatAge(rs.CreationTimestamp.Time)
 	podsStatus := fmt.Sprintf("%d Ready / %d Current (of %d desired)",
 		rs.Status.ReadyReplicas,

@@ -17,11 +17,6 @@ func checkService(svc corev1.Service, c kubernetes.Interface, _ dynamic.Interfac
 		Namespace: svc.Namespace,
 	}
 
-	// Events
-	if events, err := getResourceEvents(c, svc.Namespace, "Service", svc.Name); err == nil {
-		status.Events = events
-	}
-
 	// Type
 	if svc.Spec.Type != "" {
 		status.AddField("Type:      ", string(svc.Spec.Type))

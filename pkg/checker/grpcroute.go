@@ -94,12 +94,6 @@ func checkGRPCRoute(grpcRoute map[string]interface{}, c kubernetes.Interface, dc
 		Namespace: namespace,
 	}
 
-	// Collect events for this GRPCRoute
-	events, err := getResourceEvents(c, namespace, "GRPCRoute", name)
-	if err == nil {
-		status.Events = events
-	}
-
 	// Parent references (Gateways)
 	parentRefs, found, _ := unstructured.NestedSlice(grpcRoute, "spec", "parentRefs")
 	if found && len(parentRefs) > 0 {

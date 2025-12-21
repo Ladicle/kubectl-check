@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: sample-app
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 8080
+  - name: https
+    protocol: TCP
+    port: 443
+    targetPort: 8443
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-loadbalancer
+  namespace: default
+spec:
+  type: LoadBalancer
+  selector:
+    app: sample-app
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 8080

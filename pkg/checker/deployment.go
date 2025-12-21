@@ -52,12 +52,6 @@ func checkDeployment(deploy *appsv1.Deployment, c kubernetes.Interface, dc dynam
 		Namespace: deploy.Namespace,
 	}
 
-	// Collect events for this deployment
-	events, err := getResourceEvents(c, deploy.Namespace, "Deployment", deploy.Name)
-	if err == nil {
-		status.Events = events
-	}
-
 	// Collect container images
 	images := []string{}
 	for _, container := range deploy.Spec.Template.Spec.Containers {

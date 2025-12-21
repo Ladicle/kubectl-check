@@ -57,12 +57,6 @@ func checkCronJob(cronJob *batchv1.CronJob, c kubernetes.Interface, dc dynamic.I
 		Namespace: cronJob.Namespace,
 	}
 
-	// Collect events for this cronjob
-	events, err := getResourceEvents(c, cronJob.Namespace, "CronJob", cronJob.Name)
-	if err == nil {
-		status.Events = events
-	}
-
 	// CronJob schedule and status
 	status.AddField("Schedule:        ", cronJob.Spec.Schedule)
 	status.AddField("Suspend:         ", formatBool(cronJob.Spec.Suspend != nil && *cronJob.Spec.Suspend))

@@ -116,14 +116,6 @@ func init() {
 				return listGRPCRouteChild(obj.Object, dc)
 			},
 		},
-		"GatewayClass": {
-			GVR:     schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gatewayclasses"},
-			Aliases: []string{"gatewayclasses", "gatewayclass", "gc"},
-			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
-				return checkGatewayClass(obj.Object, c, dc)
-			},
-			ListChild: nil,
-		},
 	}
 }
 

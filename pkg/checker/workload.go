@@ -25,12 +25,6 @@ func checkWorkload(workload *kueuev1beta1.Workload, c kubernetes.Interface, dc d
 		Namespace: workload.Namespace,
 	}
 
-	// Collect events for this workload
-	events, err := getResourceEvents(c, workload.Namespace, "Workload", workload.Name)
-	if err == nil {
-		status.Events = events
-	}
-
 	// Queue name
 	if workload.Spec.QueueName != "" {
 		status.AddField("Queue:           ", string(workload.Spec.QueueName))

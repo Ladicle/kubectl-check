@@ -120,12 +120,6 @@ func checkGateway(gateway map[string]interface{}, c kubernetes.Interface, dc dyn
 		Namespace: namespace,
 	}
 
-	// Collect events for this gateway
-	events, err := getResourceEvents(c, namespace, "Gateway", name)
-	if err == nil {
-		status.Events = events
-	}
-
 	// GatewayClassName
 	gatewayClassName, found, _ := unstructured.NestedString(gateway, "spec", "gatewayClassName")
 	if found {

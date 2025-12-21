@@ -41,12 +41,6 @@ func checkDaemonSet(ds *appsv1.DaemonSet, c kubernetes.Interface, dc dynamic.Int
 		Namespace: ds.Namespace,
 	}
 
-	// Collect events for this DaemonSet
-	events, err := getResourceEvents(c, ds.Namespace, "DaemonSet", ds.Name)
-	if err == nil {
-		status.Events = events
-	}
-
 	// Collect container images
 	images := []string{}
 	for _, container := range ds.Spec.Template.Spec.Containers {

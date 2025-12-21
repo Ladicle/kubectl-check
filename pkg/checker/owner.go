@@ -107,7 +107,6 @@ func (c *Checker) collectOwnerChainWithStatus(obj *unstructured.Unstructured) ([
 
 		var ownerObj *unstructured.Unstructured
 		var ownerStatus *ResourceStatus
-
 		if isRegistered {
 			// For registered resources, fetch using dynamic client
 			ownerObj, err = c.DynamicClient.Resource(gvr).Namespace(current.GetNamespace()).Get(
@@ -115,18 +114,21 @@ func (c *Checker) collectOwnerChainWithStatus(obj *unstructured.Unstructured) ([
 			if err != nil {
 				break
 			}
-
 			// Create status using registered CheckFunc
 			ownerStatus, err = ownerInfo.CheckFunc(ownerObj, c.Clientset, c.DynamicClient)
 			if err != nil {
 				break
 			}
 		} else {
-			// For unknown resources, fetch as Table format in a single API call
+			// For unknown resources, fetch as Table format
 			ownerObj, ownerStatus, err = c.fetchUnknownResourceWithStatus(gvr, current.GetNamespace(), ownerRef.Name)
 			if err != nil {
 				break
 			}
+		}
+		events, err := getResourceEvents(c.Clientset, ownerObj.GetNamespace(), ownerObj.GetKind(), ownerObj.GetName())
+		if err == nil {
+			ownerStatus.Events = events
 		}
 
 		chain = append(chain, &ownerChainItem{

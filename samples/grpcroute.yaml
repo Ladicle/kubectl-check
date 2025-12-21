@@ -1,0 +1,25 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: sample-grpcroute
+  namespace: default
+spec:
+  parentRefs:
+  - name: sample-gateway
+    namespace: default
+  hostnames:
+  - "grpc.example.com"
+  rules:
+  - matches:
+    - method:
+        service: com.example.User
+        method: GetUser
+    backendRefs:
+    - name: user-service
+      port: 50051
+  - matches:
+    - method:
+        service: com.example.Product
+    backendRefs:
+    - name: product-service
+      port: 50051
