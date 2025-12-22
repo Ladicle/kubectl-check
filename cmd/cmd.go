@@ -15,12 +15,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/metadata"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/term"
 
 	"github.com/Ladicle/kubectl-check/pkg/checker"
+	"github.com/Ladicle/kubectl-check/pkg/client"
 	"github.com/Ladicle/kubectl-check/pkg/pritty"
 )
 
@@ -41,6 +40,16 @@ func NewCheckCmd() *cobra.Command {
 	kubeConfigFlags := genericclioptions.NewConfigFlags(true)
 	matchVersionFlags := cmdutil.NewMatchVersionFlags(kubeConfigFlags)
 	f := cmdutil.NewFactory(matchVersionFlags)
+	cfg, err := f.ToRESTConfig()
+	if err != nil {
+		_, _ = fmt.Fprintf(ioStreams.ErrOut, "Error creating REST config: %v\n", err)
+		os.Exit(1)
+	}
+	clientManager, err := client.NewManager(cfg)
+	if err != nil {
+		_, _ = fmt.Fprintf(ioStreams.ErrOut, "Error creating client manager: %v\n", err)
+		os.Exit(1)
+	}
 
 	printer := &pritty.Printer{IOStreams: ioStreams}
 	printer.TTY = term.TTY{Out: ioStreams.Out}.IsTerminalOut()
@@ -78,18 +87,7 @@ func NewCheckCmd() *cobra.Command {
 				return fmt.Errorf("unsupported resource type: %s", resourceArg)
 			}
 
-			c, err := f.KubernetesClientSet()
-			if err != nil {
-				return fmt.Errorf("failed to create Kubernetes client: %w", err)
-			}
-			cfg, err := f.ToRESTConfig()
-			if err != nil {
-				return fmt.Errorf("failed to get REST config: %w", err)
-			}
-			dc, err := dynamic.NewForConfig(cfg)
-			if err != nil {
-				return fmt.Errorf("failed to create dynamic client: %w", err)
-			}
+			// Get namespace
 			k8sCfg := f.ToRawKubeConfigLoader()
 			ns, _, err := k8sCfg.Namespace()
 			if err != nil {
@@ -99,9 +97,7 @@ func NewCheckCmd() *cobra.Command {
 			target := types.NamespacedName{Name: name, Namespace: ns}
 			chk := checker.NewChecker(&checker.Config{
 				Target:        target,
-				Clientset:     c,
-				DynamicClient: dc,
-				RESTConfig:    cfg,
+				ClientManager: clientManager,
 				ShowAllLogs:   showAllLogs,
 				LogTailLines:  int64(logTailLines),
 				CheckOwner:    checkOwner,
@@ -127,13 +123,8 @@ func NewCheckCmd() *cobra.Command {
 
 	// Register namespace flag completion
 	_ = cmds.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		mc, err := getMetadataClientFromFactory(f)
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-
 		// Use metadata client to fetch only names
-		namespaces, err := mc.Resource(schema.GroupVersionResource{Group: "", Version: "v1", Resource: "namespaces"}).
+		namespaces, err := clientManager.MetadataClient.Resource(schema.GroupVersionResource{Group: "", Version: "v1", Resource: "namespaces"}).
 			List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
@@ -189,14 +180,8 @@ func NewCheckCmd() *cobra.Command {
 				namespace = ns
 			}
 
-			// Get metadata client for efficient name-only fetching
-			mc, err := getMetadataClientFromFactory(f)
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-
 			// List resources using metadata client (only fetches metadata, not full resource)
-			list, err := mc.Resource(resInfo.GVR).Namespace(namespace).List(context.Background(), metav1.ListOptions{})
+			list, err := clientManager.MetadataClient.Resource(resInfo.GVR).Namespace(namespace).List(context.Background(), metav1.ListOptions{})
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
@@ -214,14 +199,4 @@ func NewCheckCmd() *cobra.Command {
 	}
 
 	return cmds
-}
-
-// getMetadataClientFromFactory creates a metadata client from factory
-// This is used for efficient completion that only needs resource names/metadata
-func getMetadataClientFromFactory(f cmdutil.Factory) (metadata.Interface, error) {
-	cfg, err := f.ToRESTConfig()
-	if err != nil {
-		return nil, err
-	}
-	return metadata.NewForConfig(cfg)
 }

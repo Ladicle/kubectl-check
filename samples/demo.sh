@@ -61,29 +61,29 @@ echo ""
 
 # Apply all samples
 echo -e "${GREEN}Applying all sample resources...${NC}"
-kubectl apply -f samples/deployment.yaml
-kubectl apply -f samples/replicaset.yaml
-kubectl apply -f samples/statefulset.yaml
-kubectl apply -f samples/daemonset.yaml
-kubectl apply -f samples/job.yaml
-kubectl apply -f samples/cronjob.yaml
-kubectl apply -f samples/service.yaml
-kubectl apply -f samples/pod.yaml
-kubectl apply -f samples/failing-pod.yaml
+kubectl apply --force-conflicts --server-side -f samples/deployment.yaml
+kubectl apply --force-conflicts --server-side -f samples/replicaset.yaml
+kubectl apply --force-conflicts --server-side -f samples/statefulset.yaml
+kubectl apply --force-conflicts --server-side -f samples/daemonset.yaml
+kubectl apply --force-conflicts --server-side -f samples/job.yaml
+kubectl apply --force-conflicts --server-side -f samples/cronjob.yaml
+kubectl apply --force-conflicts --server-side -f samples/service.yaml
+kubectl apply --force-conflicts --server-side -f samples/pod.yaml
+kubectl apply --force-conflicts --server-side -f samples/failing-pod.yaml
 
 # Apply optional resources if CRDs are available
 if [ "$HAS_JOBSET" = true ]; then
-    kubectl apply -f samples/jobset.yaml
+    kubectl apply --force-conflicts --server-side -f samples/jobset.yaml
 fi
 
 if [ "$HAS_GATEWAY_API" = true ]; then
-    kubectl apply -f samples/gateway.yaml
-    kubectl apply -f samples/httproute.yaml
-    kubectl apply -f samples/grpcroute.yaml
+    kubectl apply --force-conflicts --server-side -f samples/gateway.yaml
+    kubectl apply --force-conflicts --server-side -f samples/httproute.yaml
+    kubectl apply --force-conflicts --server-side -f samples/grpcroute.yaml
 fi
 
 if [ "$HAS_KUEUE" = true ]; then
-    kubectl apply -f samples/kueue-job.yaml
+    kubectl apply --force-conflicts --server-side -f samples/kueue-job.yaml
 fi
 
 echo ""
@@ -106,14 +106,14 @@ if [ "$HAS_JOBSET" = true ]; then
     demo_resource "jobset" "sample-jobset"
 fi
 
-if
-
-if [ "$HAS_KUEUE" = true ]; then
-    demo_resource "job" "sample-kueue-job"
-fi [ "$HAS_GATEWAY_API" = true ]; then
+if [ "$HAS_GATEWAY_API" = true ]; then
     demo_resource "gateway" "sample-gateway"
     demo_resource "httproute" "sample-httproute"
     demo_resource "grpcroute" "sample-grpcroute"
+fi
+
+if [ "$HAS_KUEUE" = true ]; then
+    demo_resource "job" "sample-kueue-job"
 fi
 
 echo -e "${BLUE}Checking pod with all logs (not just failed):${NC}"

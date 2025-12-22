@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/dynamic/fake"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 )
 
 func TestGetResourceEvents(t *testing.T) {
@@ -223,13 +224,20 @@ func TestChecker_CheckResource_Integration(t *testing.T) {
 	clientset := kubefake.NewClientset(objects...)
 	dc := fake.NewSimpleDynamicClient(scheme.Scheme, objects...)
 
+	// Create a fake REST config
+	fakeConfig := &rest.Config{}
+	clientManager := &ClientManager{
+		RESTConfig:    fakeConfig,
+		Clientset:     clientset,
+		DynamicClient: dc,
+	}
+
 	cfg := &Config{
 		Target: types.NamespacedName{
 			Namespace: "default",
 			Name:      "test-deploy",
 		},
-		Clientset:     clientset,
-		DynamicClient: dc,
+		ClientManager: clientManager,
 	}
 
 	checker := NewChecker(cfg, "Deployment")

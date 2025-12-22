@@ -14,8 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
+	"github.com/Ladicle/kubectl-check/pkg/client"
 	"github.com/Ladicle/kubectl-check/pkg/pritty"
 )
 
@@ -81,11 +81,8 @@ func getResourceEvents(c kubernetes.Interface, namespace, kind, name string) ([]
 
 // Config holds configuration for checking a target resource.
 type Config struct {
-	Target types.NamespacedName
-
-	Clientset     kubernetes.Interface
-	DynamicClient dynamic.Interface
-	RESTConfig    *rest.Config
+	Target        types.NamespacedName
+	ClientManager *client.Manager
 
 	// Log display options
 	ShowAllLogs  bool  // Show logs for all containers, not just failed ones
@@ -136,8 +133,11 @@ func (c *Checker) Check(printer *pritty.Printer) error {
 		return fmt.Errorf("unsupported resource kind: %s", c.Kind)
 	}
 
+	// Get clients from manager
+	dc := c.ClientManager.DynamicClient
+
 	// Get the resource using dynamic client
-	unstructuredObj, err := c.DynamicClient.Resource(resInfo.GVR).Namespace(c.Target.Namespace).Get(
+	unstructuredObj, err := dc.Resource(resInfo.GVR).Namespace(c.Target.Namespace).Get(
 		context.Background(), c.Target.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -189,15 +189,19 @@ func (c *Checker) Check(printer *pritty.Printer) error {
 }
 
 func (c *Checker) checkResource(obj *unstructured.Unstructured, resInfo ResourceInfo) (*ResourceStatus, error) {
+	// Get clients from manager
+	clientset := c.ClientManager.Clientset
+	dc := c.ClientManager.DynamicClient
+
 	// Check the resource and get its status
-	status, err := resInfo.CheckFunc(obj, c.Clientset, c.DynamicClient)
+	status, err := resInfo.CheckFunc(obj, clientset, dc)
 	if err != nil {
 		return nil, err
 	}
 
 	// Automatically collect events for all resources
 	if len(status.Events) == 0 {
-		events, err := getResourceEvents(c.Clientset, obj.GetNamespace(), obj.GetKind(), obj.GetName())
+		events, err := getResourceEvents(clientset, obj.GetNamespace(), obj.GetKind(), obj.GetName())
 		if err == nil {
 			status.Events = events
 		}
@@ -228,7 +232,7 @@ func (c *Checker) checkResource(obj *unstructured.Unstructured, resInfo Resource
 
 	// Check children if ListChild is defined
 	if resInfo.ListChild != nil {
-		childObj, err := resInfo.ListChild(obj, c.DynamicClient)
+		childObj, err := resInfo.ListChild(obj, dc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list children: %w", err)
 		}
@@ -273,11 +277,13 @@ func (c *Checker) printContainerLogs(printer *pritty.Printer, fc FailedContainer
 	_, _ = fmt.Fprintf(printer.IOStreams.Out, "\n%s\n", coloredHeader)
 	_, _ = fmt.Fprintf(printer.IOStreams.Out, "%s\n", separator)
 
+	clientset := c.ClientManager.Clientset
+
 	tailLines := c.LogTailLines
 	if tailLines <= 0 {
 		tailLines = 100 // default
 	}
-	req := c.Clientset.CoreV1().Pods(fc.Namespace).GetLogs(fc.PodName, &corev1.PodLogOptions{
+	req := clientset.CoreV1().Pods(fc.Namespace).GetLogs(fc.PodName, &corev1.PodLogOptions{
 		Container: fc.ContainerName,
 		TailLines: &tailLines,
 	})

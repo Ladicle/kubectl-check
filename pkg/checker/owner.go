@@ -105,17 +105,21 @@ func (c *Checker) collectOwnerChainWithStatus(obj *unstructured.Unstructured) ([
 		ownerKind := ownerRef.Kind
 		ownerInfo, isRegistered := Resources[ownerKind]
 
+		// Get clients from manager
+		clientset := c.ClientManager.Clientset
+		dc := c.ClientManager.DynamicClient
+
 		var ownerObj *unstructured.Unstructured
 		var ownerStatus *ResourceStatus
 		if isRegistered {
 			// For registered resources, fetch using dynamic client
-			ownerObj, err = c.DynamicClient.Resource(gvr).Namespace(current.GetNamespace()).Get(
+			ownerObj, err = dc.Resource(gvr).Namespace(current.GetNamespace()).Get(
 				context.Background(), ownerRef.Name, metav1.GetOptions{})
 			if err != nil {
 				break
 			}
 			// Create status using registered CheckFunc
-			ownerStatus, err = ownerInfo.CheckFunc(ownerObj, c.Clientset, c.DynamicClient)
+			ownerStatus, err = ownerInfo.CheckFunc(ownerObj, clientset, dc)
 			if err != nil {
 				break
 			}
@@ -126,7 +130,7 @@ func (c *Checker) collectOwnerChainWithStatus(obj *unstructured.Unstructured) ([
 				break
 			}
 		}
-		events, err := getResourceEvents(c.Clientset, ownerObj.GetNamespace(), ownerObj.GetKind(), ownerObj.GetName())
+		events, err := getResourceEvents(clientset, ownerObj.GetNamespace(), ownerObj.GetKind(), ownerObj.GetName())
 		if err == nil {
 			ownerStatus.Events = events
 		}
@@ -163,12 +167,15 @@ func parseGVRFromOwnerRef(ownerRef *metav1.OwnerReference) (schema.GroupVersionR
 // fetchUnknownResourceWithStatus fetches an unknown resource as Table format
 // and creates both the unstructured object and ResourceStatus in a single API call
 func (c *Checker) fetchUnknownResourceWithStatus(gvr schema.GroupVersionResource, namespace, name string) (*unstructured.Unstructured, *ResourceStatus, error) {
-	// Create REST client with Table accept header
-	restClient := c.Clientset.CoreV1().RESTClient()
+	// Get clientset from manager
+	clientset := c.ClientManager.Clientset
+
 	var err error
+	// Create REST client with Table accept header
+	restClient := clientset.CoreV1().RESTClient()
 	if gvr.Group != "" {
 		// For non-core resources, use APIPath with group
-		restConfig := rest.CopyConfig(c.RESTConfig)
+		restConfig := rest.CopyConfig(c.ClientManager.RESTConfig)
 		restConfig.GroupVersion = &schema.GroupVersion{Group: gvr.Group, Version: gvr.Version}
 		restConfig.APIPath = "/apis"
 		restClient, err = rest.RESTClientFor(restConfig)
