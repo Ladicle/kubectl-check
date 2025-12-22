@@ -9,12 +9,14 @@ import (
 
 	// Initialize all known client auth plugins.
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/metadata"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/term"
 
@@ -125,12 +127,14 @@ func NewCheckCmd() *cobra.Command {
 
 	// Register namespace flag completion
 	_ = cmds.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		c, err := f.KubernetesClientSet()
+		mc, err := getMetadataClientFromFactory(f)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		namespaces, err := c.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
+		// Use metadata client to fetch only names
+		namespaces, err := mc.Resource(schema.GroupVersionResource{Group: "", Version: "v1", Resource: "namespaces"}).
+			List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -138,13 +142,7 @@ func NewCheckCmd() *cobra.Command {
 		var completions []string
 		for _, ns := range namespaces.Items {
 			if strings.HasPrefix(ns.Name, toComplete) {
-				// Add status as description if available
-				status := string(ns.Status.Phase)
-				if status != "" {
-					completions = append(completions, ns.Name+"\t"+status)
-				} else {
-					completions = append(completions, ns.Name)
-				}
+				completions = append(completions, ns.Name)
 			}
 		}
 		return completions, cobra.ShellCompDirectiveNoFileComp
@@ -191,23 +189,22 @@ func NewCheckCmd() *cobra.Command {
 				namespace = ns
 			}
 
-			// Get dynamic client
-			dc, err := f.DynamicClient()
+			// Get metadata client for efficient name-only fetching
+			mc, err := getMetadataClientFromFactory(f)
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
 
-			// List resources
-			list, err := dc.Resource(resInfo.GVR).Namespace(namespace).List(context.Background(), metav1.ListOptions{})
+			// List resources using metadata client (only fetches metadata, not full resource)
+			list, err := mc.Resource(resInfo.GVR).Namespace(namespace).List(context.Background(), metav1.ListOptions{})
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
 
 			var completions []string
 			for _, item := range list.Items {
-				name := item.GetName()
-				if strings.HasPrefix(name, toComplete) {
-					completions = append(completions, name)
+				if strings.HasPrefix(item.Name, toComplete) {
+					completions = append(completions, item.Name)
 				}
 			}
 			return completions, cobra.ShellCompDirectiveNoFileComp
@@ -217,4 +214,14 @@ func NewCheckCmd() *cobra.Command {
 	}
 
 	return cmds
+}
+
+// getMetadataClientFromFactory creates a metadata client from factory
+// This is used for efficient completion that only needs resource names/metadata
+func getMetadataClientFromFactory(f cmdutil.Factory) (metadata.Interface, error) {
+	cfg, err := f.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	return metadata.NewForConfig(cfg)
 }
