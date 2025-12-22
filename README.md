@@ -26,28 +26,25 @@ Usage:
   kubectl check [flags...] <resource> <name>
 
 Resources:
-  - cronjobs, cronjob, cj
-  - daemonsets, daemonset, ds
-  - deployments, deployment, deploy
-  - gateways, gateway, gtw (Gateway API)
-  - grpcroutes, grpcroute (Gateway API)
-  - httproutes, httproute (Gateway API)
-  - jobs, job
-  - jobsets, jobset, js
-  - services, service, svc
-  - pods, pod, po
-  - replicasets, replicaset, rs
-  - statefulsets, statefulset, sts
-  - workloads, workload, wl (Kueue)
+  apps:
+    daemonsets, deployments, replicasets, statefulsets
+  batch:
+    cronjobs, jobs
+  core:
+    persistentvolumeclaims, persistentvolumes, pods, services
+  gateway.networking.k8s.io:
+    gateways, grpcroutes, httproutes
+  jobset.x-k8s.io:
+    jobsets
 
 Flags:
-  -O, --check-owner        Recursively traverse owner references upward
-      --show-all-logs      Show logs for all containers (not just failed ones)
-      --tail int           Number of log lines to display (default 100)
-      --version            Version for check
-      --options            Show full options of this command
-  -h, --help               Show this message
-  -R, --color              Enable color output even if stdout is not a terminal
+  -O, --check-owner    Recursively traverse owner references upward (default true)
+      --show-all-logs  Show logs for all containers (not just failed ones)
+      --tail int       Number of log lines to display (default 100)
+      --version        Version for check
+      --options        Show full options of this command
+  -h, --help           Show this message
+  -R, --color          Enable color output even if stdout is not a terminal
 
 Available Commands:
   completion   Generate shell completion scripts
