@@ -104,9 +104,9 @@ $ kubectl check deploy hello
 Deployment/hello                    # Parent resource
   ├─ ReplicaSet/hello-7b6f74959b    # Child resource
   │   └─ Pod/hello-7b6f74959b-6qmh6 # Grandchild resource
-  │       ├─ Container status
-  │       └─ Events                  # Events for all resources in hierarchy
-  └─ Container Logs                  # Logs from failed containers
+  │       └─ Container status
+  ├─ Events                         # Events for all resources in hierarchy
+  └─ Container Logs                 # Logs from (failed) containers
 ```
 
 ### Owner Reference Traversal
