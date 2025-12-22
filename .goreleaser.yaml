@@ -1,7 +1,15 @@
 version: 2
 project_name: kubectl-check
+before:
+  hooks:
+    - mkdir -p completions
+    - sh -c 'go run main.go completion bash > completions/kubectl-check.bash'
+    - sh -c 'go run main.go completion zsh > completions/kubectl-check.zsh'
+    - sh -c 'go run main.go completion fish > completions/kubectl-check.fish'
 builds:
-  - env:
+  - id: kubectl-check
+    binary: kubectl-check
+    env:
       - CGO_ENABLED=0
     ldflags:
       - -w
@@ -9,13 +17,28 @@ builds:
       - -X github.com/Ladicle/kubectl-check/cmd.commit={{ .ShortCommit }}
     goos:
       - linux
-      - windows
       - darwin
     goarch:
       - amd64
       - arm64
-brews:
-  - repository:
+archives:
+  - files:
+      - kubectl_complete-check
+      - completions/*
+      - LICENSE
+      - README.md
+homebrew_casks:
+  - name: kubectl-check
+    repository:
       owner: Ladicle
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/Ladicle/kubectl-check"
+    description: "A kubectl plugin to check the status of Kubernetes resources"
+    binaries:
+      - kubectl-check
+      - kubectl_complete-check
+    completions:
+      bash: completions/kubectl-check.bash
+      zsh: completions/kubectl-check.zsh
+      fish: completions/kubectl-check.fish

@@ -57,9 +57,7 @@ Use "kubectl check --options" for full information about global flags.
 
 ## Shell completion
 
-This plugin supports shell completion when used through kubectl (requires kubectl v1.26 or higher). To enable shell completion for the plugin, you must copy the `kubectl_complete-check` script somewhere on your `$PATH` and give it executable permissions.
-
-**Note:** If you installed via Homebrew, you still need to manually install the completion script as it is not included in the brew package.
+If you have installed `kubectl-check` via non-Homebrew methods, you need to set up shell completion manually. To do so, download the `kubectl_complete-check` script and place it in your PATH:
 
 ```bash
 # Download the kubectl_complete-check script from GitHub
@@ -67,10 +65,6 @@ curl -LO https://raw.githubusercontent.com/Ladicle/kubectl-check/master/kubectl_
 chmod +x kubectl_complete-check
 sudo mv kubectl_complete-check /usr/local/bin/
 ```
-
-The `kubectl_complete-check` script provides completions by:
-1. Using the builtin `__complete` command provided by [Cobra](https://github.com/spf13/cobra)
-2. Leveraging `ValidArgsFunction` to dynamically fetch resource names from your Kubernetes cluster
 
 Once installed, you can use completions like:
 ```bash
