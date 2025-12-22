@@ -142,15 +142,16 @@ func NewCheckCmd() *cobra.Command {
 	// Add shell completion
 	cmds.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 0 {
-			// Complete resource types (aliases) with descriptions
+			// Complete resource types (one primary name per resource, no aliases)
 			var completions []string
-			for alias, kind := range aliasToKind {
-				if strings.HasPrefix(alias, toComplete) {
-					// Add description from resource info if available
-					if resInfo, ok := checker.Resources[kind]; ok {
-						completions = append(completions, alias+"\t"+resInfo.GVR.Resource)
-					} else {
-						completions = append(completions, alias)
+			seen := make(map[string]bool)
+			for _, resInfo := range checker.Resources {
+				// Use the primary alias (first one) if available
+				if len(resInfo.Aliases) > 0 {
+					primaryName := resInfo.Aliases[0]
+					if strings.HasPrefix(primaryName, toComplete) && !seen[primaryName] {
+						completions = append(completions, primaryName)
+						seen[primaryName] = true
 					}
 				}
 			}
@@ -169,19 +170,27 @@ func NewCheckCmd() *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			// Get namespace from flag or default
-			namespace, _ := cmd.Flags().GetString("namespace")
-			if namespace == "" {
-				k8sCfg := f.ToRawKubeConfigLoader()
-				ns, _, err := k8sCfg.Namespace()
-				if err != nil {
-					return nil, cobra.ShellCompDirectiveError
+			// Get namespace from flag or default (only for namespaced resources)
+			var list *metav1.PartialObjectMetadataList
+			var err error
+
+			if resInfo.Namespaced {
+				namespace, _ := cmd.Flags().GetString("namespace")
+				if namespace == "" {
+					k8sCfg := f.ToRawKubeConfigLoader()
+					ns, _, err := k8sCfg.Namespace()
+					if err != nil {
+						return nil, cobra.ShellCompDirectiveError
+					}
+					namespace = ns
 				}
-				namespace = ns
+				// List namespaced resources
+				list, err = clientManager.MetadataClient.Resource(resInfo.GVR).Namespace(namespace).List(context.Background(), metav1.ListOptions{})
+			} else {
+				// List cluster-scoped resources
+				list, err = clientManager.MetadataClient.Resource(resInfo.GVR).List(context.Background(), metav1.ListOptions{})
 			}
 
-			// List resources using metadata client (only fetches metadata, not full resource)
-			list, err := clientManager.MetadataClient.Resource(resInfo.GVR).Namespace(namespace).List(context.Background(), metav1.ListOptions{})
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
