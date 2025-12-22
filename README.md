@@ -7,7 +7,7 @@
 Homebrew:
 
 ```bash
-$ brew install Ladicle/brew/kubectl-check
+$ brew install Ladicle/tap/kubectl-check
 ```
 
 Go:
