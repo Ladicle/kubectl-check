@@ -69,14 +69,10 @@ func init() {
 			ListChild: makeListChildFunc(listCronJobChild),
 		},
 		"JobSet": {
-			GVR:     schema.GroupVersionResource{Group: "jobset.x-k8s.io", Version: "v1alpha2", Resource: "jobsets"},
-			Aliases: []string{"jobsets", "jobset", "js"},
-			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
-				return checkJobSet(obj.Object, c, dc)
-			},
-			ListChild: func(obj *unstructured.Unstructured, dc dynamic.Interface) (*unstructured.Unstructured, error) {
-				return listJobSetChild(obj.Object, dc)
-			},
+			GVR:       schema.GroupVersionResource{Group: "jobset.x-k8s.io", Version: "v1alpha2", Resource: "jobsets"},
+			Aliases:   []string{"jobsets", "jobset", "js"},
+			CheckFunc: makeUnstructuredCheckFunc(checkJobSet),
+			ListChild: makeUnstructuredListChildFunc(listJobSetChild),
 		},
 		// Workload is not directly checkable but used as intermediate node in hierarchy
 		"Workload": {
@@ -87,34 +83,22 @@ func init() {
 		},
 		// Gateway API resources
 		"Gateway": {
-			GVR:     schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"},
-			Aliases: []string{"gateways", "gateway", "gtw"},
-			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
-				return checkGateway(obj.Object, c, dc)
-			},
-			ListChild: func(obj *unstructured.Unstructured, dc dynamic.Interface) (*unstructured.Unstructured, error) {
-				return listGatewayChild(obj.Object, dc)
-			},
+			GVR:       schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"},
+			Aliases:   []string{"gateways", "gateway", "gtw"},
+			CheckFunc: makeUnstructuredCheckFunc(checkGateway),
+			ListChild: makeUnstructuredListChildFunc(listGatewayChild),
 		},
 		"HTTPRoute": {
-			GVR:     schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"},
-			Aliases: []string{"httproutes", "httproute"},
-			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
-				return checkHTTPRoute(obj.Object, c, dc)
-			},
-			ListChild: func(obj *unstructured.Unstructured, dc dynamic.Interface) (*unstructured.Unstructured, error) {
-				return listHTTPRouteChild(obj.Object, dc)
-			},
+			GVR:       schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"},
+			Aliases:   []string{"httproutes", "httproute"},
+			CheckFunc: makeUnstructuredCheckFunc(checkHTTPRoute),
+			ListChild: makeUnstructuredListChildFunc(listHTTPRouteChild),
 		},
 		"GRPCRoute": {
-			GVR:     schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "grpcroutes"},
-			Aliases: []string{"grpcroutes", "grpcroute"},
-			CheckFunc: func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
-				return checkGRPCRoute(obj.Object, c, dc)
-			},
-			ListChild: func(obj *unstructured.Unstructured, dc dynamic.Interface) (*unstructured.Unstructured, error) {
-				return listGRPCRouteChild(obj.Object, dc)
-			},
+			GVR:       schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "grpcroutes"},
+			Aliases:   []string{"grpcroutes", "grpcroute"},
+			CheckFunc: makeUnstructuredCheckFunc(checkGRPCRoute),
+			ListChild: makeUnstructuredListChildFunc(listGRPCRouteChild),
 		},
 	}
 }
@@ -138,5 +122,21 @@ func makeListChildFunc[T any](fn func(T, dynamic.Interface) (*unstructured.Unstr
 			return nil, err
 		}
 		return fn(t, dc)
+	}
+}
+
+// makeUnstructuredCheckFunc wraps a check function that works with map[string]interface{}
+// This is useful for CRDs where we don't have typed structs
+func makeUnstructuredCheckFunc(fn func(map[string]interface{}, kubernetes.Interface, dynamic.Interface) (*ResourceStatus, error)) func(*unstructured.Unstructured, kubernetes.Interface, dynamic.Interface) (*ResourceStatus, error) {
+	return func(obj *unstructured.Unstructured, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {
+		return fn(obj.Object, c, dc)
+	}
+}
+
+// makeUnstructuredListChildFunc wraps a listChild function that works with map[string]interface{}
+// This is useful for CRDs where we don't have typed structs
+func makeUnstructuredListChildFunc(fn func(map[string]interface{}, dynamic.Interface) (*unstructured.Unstructured, error)) func(*unstructured.Unstructured, dynamic.Interface) (*unstructured.Unstructured, error) {
+	return func(obj *unstructured.Unstructured, dc dynamic.Interface) (*unstructured.Unstructured, error) {
+		return fn(obj.Object, dc)
 	}
 }

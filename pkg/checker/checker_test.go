@@ -13,6 +13,8 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+
+	"github.com/Ladicle/kubectl-check/pkg/client"
 )
 
 func TestGetResourceEvents(t *testing.T) {
@@ -226,7 +228,7 @@ func TestChecker_CheckResource_Integration(t *testing.T) {
 
 	// Create a fake REST config
 	fakeConfig := &rest.Config{}
-	clientManager := &ClientManager{
+	clientManager := &client.Manager{
 		RESTConfig:    fakeConfig,
 		Clientset:     clientset,
 		DynamicClient: dc,
