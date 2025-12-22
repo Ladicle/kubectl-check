@@ -149,7 +149,7 @@ $ kubectl create deployment hello --image=not/found
 deployment.apps/hello created
 
 $ kubectl check deploy hello
-Deployment/hello
+Deployment/hello ◀
   Namespace:   default
   Pods Status: 0 Ready / 1 Up-to-date / 0 Available (of 1 desired)
   Images:      not/found
