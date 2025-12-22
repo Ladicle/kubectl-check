@@ -27,6 +27,9 @@ func (c *Checker) checkWithOwners(obj *unstructured.Unstructured, resInfo Resour
 		return nil, err
 	}
 
+	// Mark the target resource
+	targetStatus.IsTarget = true
+
 	// Then, recursively check owners and build the hierarchy from top to bottom
 	// This now fetches and checks owners in a single API call per resource
 	ownerChain, err := c.collectOwnerChainWithStatus(obj)

@@ -18,6 +18,7 @@ type ResourceStatus struct {
 	Events           []Event
 	FailedContainers []FailedContainer
 	AllContainers    []FailedContainer // All containers, for use with --show-all-logs
+	IsTarget         bool              // True if this is the originally requested resource
 }
 
 // StatusField represents a key-value pair for status display
@@ -107,6 +108,11 @@ func (rs *ResourceStatus) Render(printer *pritty.Printer, indent int) {
 	} else {
 		// Child resource or resource without namespace: Kind/Name
 		resourceHeader = fmt.Sprintf("%s/%s", rs.Kind, rs.Name)
+	}
+
+	// Add target marker if this is the originally requested resource
+	if rs.IsTarget {
+		resourceHeader += " ◀"
 	}
 
 	coloredHeader := pritty.Style(resourceHeader).Fg(pritty.Cyan).Decorate(pritty.Bold).String()
