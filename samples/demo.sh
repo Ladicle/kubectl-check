@@ -61,9 +61,12 @@ echo ""
 
 # Apply all samples
 echo -e "${GREEN}Applying all sample resources...${NC}"
+kubectl apply --force-conflicts --server-side -f samples/pvc-pv.yaml
 kubectl apply --force-conflicts --server-side -f samples/deployment.yaml
+kubectl apply --force-conflicts --server-side -f samples/deployment-with-pvc.yaml
 kubectl apply --force-conflicts --server-side -f samples/replicaset.yaml
 kubectl apply --force-conflicts --server-side -f samples/statefulset.yaml
+kubectl apply --force-conflicts --server-side -f samples/statefulset-with-pvc.yaml
 kubectl apply --force-conflicts --server-side -f samples/daemonset.yaml
 kubectl apply --force-conflicts --server-side -f samples/job.yaml
 kubectl apply --force-conflicts --server-side -f samples/cronjob.yaml
@@ -92,9 +95,14 @@ sleep 10
 echo ""
 
 # Demo each resource type
+demo_resource "pv" "local-pv-1"
+demo_resource "pv" "local-pv-2"
+demo_resource "pvc" "sample-pvc"
 demo_resource "deployment" "sample-deployment"
+demo_resource "deployment" "sample-deployment-with-pvc"
 demo_resource "replicaset" "sample-replicaset"
 demo_resource "statefulset" "sample-statefulset"
+demo_resource "statefulset" "sample-statefulset-with-pvc"
 demo_resource "daemonset" "sample-daemonset"
 demo_resource "job" "sample-job"
 demo_resource "cronjob" "sample-cronjob"

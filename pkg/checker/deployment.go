@@ -10,11 +10,33 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 )
 
 func listDeploymentChild(deploy *appsv1.Deployment, dc dynamic.Interface) (*unstructured.Unstructured, error) {
+	var allItems []unstructured.Unstructured
+
+	// Collect PVCs referenced in the pod template
+	pvcNames := make(map[string]bool)
+	for _, vol := range deploy.Spec.Template.Spec.Volumes {
+		if vol.PersistentVolumeClaim != nil {
+			pvcNames[vol.PersistentVolumeClaim.ClaimName] = true
+		}
+	}
+
+	// Fetch PVCs
+	if len(pvcNames) > 0 {
+		pvcGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "persistentvolumeclaims"}
+		for pvcName := range pvcNames {
+			pvc, err := dc.Resource(pvcGVR).Namespace(deploy.Namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
+			if err == nil {
+				allItems = append(allItems, *pvc)
+			}
+		}
+	}
+
 	// List ReplicaSets using dynamic client
 	rsInfo, ok := Resources["ReplicaSet"]
 	if !ok {
@@ -42,7 +64,28 @@ func listDeploymentChild(deploy *appsv1.Deployment, dc dynamic.Interface) (*unst
 		}
 	}
 
-	return latestRS, nil
+	// Mark the ReplicaSet to skip PVC collection
+	latestRS.Object["_skipPVCCollection"] = true
+	allItems = append(allItems, *latestRS)
+
+	if len(allItems) == 0 {
+		return nil, nil
+	}
+
+	// Convert allItems to raw objects for the list
+	items := make([]interface{}, len(allItems))
+	for i := range allItems {
+		items[i] = allItems[i].Object
+	}
+
+	// Convert to Unstructured with list content
+	result := &unstructured.Unstructured{}
+	result.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "List",
+		"items":      items,
+	})
+	return result, nil
 }
 
 func checkDeployment(deploy *appsv1.Deployment, c kubernetes.Interface, dc dynamic.Interface) (*ResourceStatus, error) {

@@ -113,8 +113,14 @@ func (c *Checker) collectOwnerChainWithStatus(obj *unstructured.Unstructured) ([
 		var ownerStatus *ResourceStatus
 		if isRegistered {
 			// For registered resources, fetch using dynamic client
-			ownerObj, err = dc.Resource(gvr).Namespace(current.GetNamespace()).Get(
-				context.Background(), ownerRef.Name, metav1.GetOptions{})
+			if ownerInfo.Namespaced {
+				ownerObj, err = dc.Resource(gvr).Namespace(current.GetNamespace()).Get(
+					context.Background(), ownerRef.Name, metav1.GetOptions{})
+			} else {
+				// Cluster-scoped owner (e.g., PersistentVolume)
+				ownerObj, err = dc.Resource(gvr).Get(
+					context.Background(), ownerRef.Name, metav1.GetOptions{})
+			}
 			if err != nil {
 				break
 			}

@@ -137,8 +137,16 @@ func (c *Checker) Check(printer *pritty.Printer) error {
 	dc := c.ClientManager.DynamicClient
 
 	// Get the resource using dynamic client
-	unstructuredObj, err := dc.Resource(resInfo.GVR).Namespace(c.Target.Namespace).Get(
-		context.Background(), c.Target.Name, metav1.GetOptions{})
+	var unstructuredObj *unstructured.Unstructured
+	var err error
+	if resInfo.Namespaced {
+		unstructuredObj, err = dc.Resource(resInfo.GVR).Namespace(c.Target.Namespace).Get(
+			context.Background(), c.Target.Name, metav1.GetOptions{})
+	} else {
+		// Cluster-scoped resource (e.g., PersistentVolume)
+		unstructuredObj, err = dc.Resource(resInfo.GVR).Get(
+			context.Background(), c.Target.Name, metav1.GetOptions{})
+	}
 	if err != nil {
 		return err
 	}
@@ -249,18 +257,27 @@ func (c *Checker) checkResource(obj *unstructured.Unstructured, resInfo Resource
 			}
 
 			if len(children) > 0 {
-				childKind := children[0].GetKind()
-				childInfo, ok := Resources[childKind]
-				if !ok {
-					return nil, fmt.Errorf("unsupported child kind: %s", childKind)
-				}
+				// Group children by kind
+				childrenByKind := make(map[string][]unstructured.Unstructured)
 				for i := range children {
-					// Recursively check each child
-					childStatus, err := c.checkResource(&children[i], childInfo)
-					if err != nil {
-						return nil, err
+					kind := children[i].GetKind()
+					childrenByKind[kind] = append(childrenByKind[kind], children[i])
+				}
+
+				// Process each kind group
+				for childKind, kindChildren := range childrenByKind {
+					childInfo, ok := Resources[childKind]
+					if !ok {
+						return nil, fmt.Errorf("unsupported child kind: %s", childKind)
 					}
-					status.AddChild(childStatus)
+					for i := range kindChildren {
+						// Recursively check each child
+						childStatus, err := c.checkResource(&kindChildren[i], childInfo)
+						if err != nil {
+							return nil, err
+						}
+						status.AddChild(childStatus)
+					}
 				}
 			}
 		}

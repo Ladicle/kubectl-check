@@ -133,14 +133,33 @@ func TestListDeploymentChild(t *testing.T) {
 		t.Fatal("expected result, got nil")
 	}
 
+	// Result should be a List
 	kind := result.GetKind()
-	if kind != "ReplicaSet" {
-		t.Errorf("expected Kind=ReplicaSet, got %s", kind)
+	if kind != "List" {
+		t.Errorf("expected Kind=List, got %s", kind)
 	}
 
-	name := result.GetName()
-	if name != "test-deploy-12345" {
-		t.Errorf("expected Name=test-deploy-12345, got %s", name)
+	// Convert to list and check items
+	list, err := result.ToList()
+	if err != nil {
+		t.Fatalf("failed to convert to list: %v", err)
+	}
+
+	// Should have at least the ReplicaSet (PVC might not exist in fake client)
+	if len(list.Items) == 0 {
+		t.Fatal("expected at least one item in list")
+	}
+
+	// Find the ReplicaSet
+	var foundRS bool
+	for _, item := range list.Items {
+		if item.GetKind() == "ReplicaSet" && item.GetName() == "test-deploy-12345" {
+			foundRS = true
+			break
+		}
+	}
+	if !foundRS {
+		t.Error("expected to find ReplicaSet test-deploy-12345 in list")
 	}
 }
 

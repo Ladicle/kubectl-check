@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sample-statefulset-with-pvc
+  namespace: default
+spec:
+  serviceName: sample-statefulset-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: statefulset-with-storage
+  template:
+    metadata:
+      labels:
+        app: statefulset-with-storage
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/nginx/html
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: local-storage
+      resources:
+        requests:
+          storage: 500Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-statefulset-service
+  namespace: default
+spec:
+  clusterIP: None
+  selector:
+    app: statefulset-with-storage
+  ports:
+  - port: 80

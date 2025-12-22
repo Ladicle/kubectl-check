@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 )
@@ -21,6 +22,47 @@ func listJobSetChild(jobset map[string]interface{}, dc dynamic.Interface) (*unst
 	name, _, err := unstructured.NestedString(jobset, "metadata", "name")
 	if err != nil {
 		return nil, err
+	}
+
+	var allItems []interface{}
+
+	// Collect PVCs referenced in replicatedJobs templates
+	pvcNames := make(map[string]bool)
+	replicatedJobs, found, _ := unstructured.NestedSlice(jobset, "spec", "replicatedJobs")
+	if found {
+		for _, rj := range replicatedJobs {
+			rjMap, ok := rj.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			// Get volumes from template.spec.template.spec.volumes
+			volumes, found, _ := unstructured.NestedSlice(rjMap, "template", "spec", "template", "spec", "volumes")
+			if found {
+				for _, vol := range volumes {
+					volMap, ok := vol.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					pvc, found, _ := unstructured.NestedMap(volMap, "persistentVolumeClaim")
+					if found {
+						if claimName, ok := pvc["claimName"].(string); ok {
+							pvcNames[claimName] = true
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Fetch PVCs
+	if len(pvcNames) > 0 {
+		pvcGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "persistentvolumeclaims"}
+		for pvcName := range pvcNames {
+			pvc, err := dc.Resource(pvcGVR).Namespace(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
+			if err == nil {
+				allItems = append(allItems, pvc.Object)
+			}
+		}
 	}
 
 	// List Jobs using dynamic client with label selector
@@ -54,15 +96,16 @@ func listJobSetChild(jobset map[string]interface{}, dc dynamic.Interface) (*unst
 		return nil, err
 	}
 
-	items := make([]interface{}, 0, len(jobList.Items)+len(serviceList.Items))
+	// Mark Jobs to skip PVC collection
 	for i := range jobList.Items {
-		items = append(items, jobList.Items[i].Object)
+		jobList.Items[i].Object["_skipPVCCollection"] = true
+		allItems = append(allItems, jobList.Items[i].Object)
 	}
 	for i := range serviceList.Items {
-		items = append(items, serviceList.Items[i].Object)
+		allItems = append(allItems, serviceList.Items[i].Object)
 	}
 
-	if len(items) == 0 {
+	if len(allItems) == 0 {
 		return nil, nil
 	}
 
@@ -70,7 +113,7 @@ func listJobSetChild(jobset map[string]interface{}, dc dynamic.Interface) (*unst
 		Object: map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "List",
-			"items":      items,
+			"items":      allItems,
 		},
 	}, nil
 }
