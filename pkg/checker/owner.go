@@ -3,6 +3,7 @@ package checker
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -134,8 +135,11 @@ func (c *Checker) collectOwnerChainWithStatus(obj *unstructured.Unstructured) ([
 			}
 		} else {
 			// For unknown resources, fetch as Table format
-			ownerObj, ownerStatus, err = c.fetchUnknownResourceWithStatus(gvr, current.GetNamespace(), ownerRef.Name)
+			ownerObj, ownerStatus, err = c.fetchUnknownResourceWithStatus(gvr, current.GetNamespace(), ownerRef.Name, ownerRef.Kind)
 			if err != nil {
+				// Log the error but continue - owner chain may still be useful without this owner
+				fmt.Fprintf(os.Stderr, "Warning: failed to fetch unknown resource %s/%s (GVR: %v): %v\n",
+					ownerRef.Kind, ownerRef.Name, gvr, err)
 				break
 			}
 		}
@@ -175,7 +179,7 @@ func parseGVRFromOwnerRef(ownerRef *metav1.OwnerReference) (schema.GroupVersionR
 
 // fetchUnknownResourceWithStatus fetches an unknown resource as Table format
 // and creates both the unstructured object and ResourceStatus in a single API call
-func (c *Checker) fetchUnknownResourceWithStatus(gvr schema.GroupVersionResource, namespace, name string) (*unstructured.Unstructured, *ResourceStatus, error) {
+func (c *Checker) fetchUnknownResourceWithStatus(gvr schema.GroupVersionResource, namespace, name, kind string) (*unstructured.Unstructured, *ResourceStatus, error) {
 	// Get clientset from manager
 	clientset := c.ClientManager.Clientset
 
@@ -212,14 +216,38 @@ func (c *Checker) fetchUnknownResourceWithStatus(gvr schema.GroupVersionResource
 
 	// Extract the object from the table row
 	row := table.Rows[0]
-	obj, ok := row.Object.Object.(*unstructured.Unstructured)
-	if !ok {
-		return nil, nil, fmt.Errorf("failed to convert row object to unstructured")
+
+	// Try to get the object from row.Object
+	var obj *unstructured.Unstructured
+	if row.Object.Object != nil {
+		// First try direct type assertion
+		if u, ok := row.Object.Object.(*unstructured.Unstructured); ok {
+			obj = u
+		}
 	}
 
-	// Create status from table data
+	// If direct conversion failed, try to unmarshal from Raw
+	if obj == nil && len(row.Object.Raw) > 0 {
+		obj = &unstructured.Unstructured{}
+		if err := obj.UnmarshalJSON(row.Object.Raw); err != nil {
+			return nil, nil, fmt.Errorf("failed to unmarshal row object: %w", err)
+		}
+	}
+
+	if obj == nil {
+		return nil, nil, fmt.Errorf("failed to extract object from table row")
+	}
+
+	// Ensure the object has the correct Kind set
+	// (Table format responses may return PartialObjectMetadata)
+	if obj.GetKind() == "" || obj.GetKind() == "PartialObjectMetadata" {
+		obj.SetKind(kind)
+		obj.SetAPIVersion(gvr.Group + "/" + gvr.Version)
+	}
+
+	// Create status from table data using the correct Kind
 	status := &ResourceStatus{
-		Kind:      obj.GetKind(),
+		Kind:      kind,
 		Name:      obj.GetName(),
 		Namespace: obj.GetNamespace(),
 	}
