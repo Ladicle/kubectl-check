@@ -87,11 +87,14 @@ func NewCheckCmd() *cobra.Command {
 				return fmt.Errorf("unsupported resource type: %s", resourceArg)
 			}
 
-			// Get namespace
-			k8sCfg := f.ToRawKubeConfigLoader()
-			ns, _, err := k8sCfg.Namespace()
-			if err != nil {
-				return fmt.Errorf("failed to get namespace: %w", err)
+			// Get namespace from flags or kubeconfig
+			ns := *kubeConfigFlags.Namespace
+			if ns == "" {
+				k8sCfg := f.ToRawKubeConfigLoader()
+				ns, _, err = k8sCfg.Namespace()
+				if err != nil {
+					return fmt.Errorf("failed to get namespace: %w", err)
+				}
 			}
 
 			target := types.NamespacedName{Name: name, Namespace: ns}
